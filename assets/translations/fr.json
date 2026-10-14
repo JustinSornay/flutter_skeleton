@@ -1,0 +1,51 @@
+{
+  "app": {
+    "title": "Flutter Skeleton"
+  },
+  "nav": {
+    "home": "Tâches",
+    "settings": "Réglages",
+    "menu": "Navigation"
+  },
+  "common": {
+    "back": "Retour",
+    "close": "Fermer",
+    "loading": "Chargement",
+    "retry": "Réessayer"
+  },
+  "error": {
+    "load_failed": "Impossible de charger les données.",
+    "save_failed": "La modification n'a pas pu être enregistrée."
+  },
+  "offline": {
+    "banner": "Hors ligne"
+  },
+  "not_found": {
+    "title": "Page introuvable",
+    "back_home": "Retour à l'accueil"
+  },
+  "todos": {
+    "title": "Tâches",
+    "empty": "Aucune tâche.",
+    "status_done": "Terminée",
+    "status_pending": "À faire"
+  },
+  "todo": {
+    "title": "Détail de la tâche",
+    "user": "Utilisateur n°{id}",
+    "completed": "Terminée"
+  },
+  "settings": {
+    "title": "Réglages",
+    "language": "Langue",
+    "about": "À propos"
+  },
+  "language": {
+    "fr": "Français",
+    "en": "English"
+  },
+  "about": {
+    "title": "Flutter Skeleton",
+    "body": "Squelette d'application Flutter : widgets MVVM, couche API typée, providers et go_router. Les données de démonstration proviennent de JSONPlaceholder."
+  }
+}

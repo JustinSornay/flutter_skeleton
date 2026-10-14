@@ -1,0 +1,13 @@
+// detail_output.dart
+//
+// Full representation returned by `GET {{ route }}/:id`.
+
+import "package:flutter_skeleton/api/dtos/_base/output/output_interface.dart";
+import "package:flutter_skeleton/api/http/http_output.dart";
+
+final class {{ ClassName }}DetailOutput implements OutputInterface {
+  final int id;
+
+  {{ ClassName }}DetailOutput.fromOutput(HttpOutput output):
+    id = output.cast<int>("id");
+}

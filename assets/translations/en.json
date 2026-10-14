@@ -1,0 +1,51 @@
+{
+  "app": {
+    "title": "Flutter Skeleton"
+  },
+  "nav": {
+    "home": "Tasks",
+    "settings": "Settings",
+    "menu": "Navigation"
+  },
+  "common": {
+    "back": "Back",
+    "close": "Close",
+    "loading": "Loading",
+    "retry": "Retry"
+  },
+  "error": {
+    "load_failed": "Unable to load data.",
+    "save_failed": "The change could not be saved."
+  },
+  "offline": {
+    "banner": "Offline"
+  },
+  "not_found": {
+    "title": "Page not found",
+    "back_home": "Back to home"
+  },
+  "todos": {
+    "title": "Tasks",
+    "empty": "No tasks.",
+    "status_done": "Done",
+    "status_pending": "To do"
+  },
+  "todo": {
+    "title": "Task details",
+    "user": "User #{id}",
+    "completed": "Done"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "about": "About"
+  },
+  "language": {
+    "fr": "Français",
+    "en": "English"
+  },
+  "about": {
+    "title": "Flutter Skeleton",
+    "body": "Flutter application skeleton: MVVM widgets, typed API layer, providers and go_router. Demo data comes from JSONPlaceholder."
+  }
+}

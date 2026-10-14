@@ -1,0 +1,82 @@
+// {{ file_name }}_service.dart
+//
+// API calls for the `{{ route }}` resource.
+
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/input/post_input.dart";
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/input/put_input.dart";
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/output/detail_output.dart";
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/output/list_output.dart";
+import "package:flutter_skeleton/api/http/enums.dart";
+import "package:flutter_skeleton/api/http/http.dart";
+import "package:flutter_skeleton/api/http/http_output.dart";
+import "package:flutter_skeleton/api/services/_base/apiFilterBuilder/api_filter_builder.dart";
+import "package:logger/logger.dart";
+
+final class {{ ClassName }}Service {
+  static Future<{{ ClassName }}DetailOutput> get(int id) async {
+    try {
+      return {{ ClassName }}DetailOutput.fromOutput(await Http.output(
+        api: HttpApiEnum.api,
+        route: "{{ route }}/$id",
+      ));
+    } catch (e) {
+      Logger().e("{{ ClassName }}Service.get: $e");
+      rethrow;
+    }
+  }
+
+  static Future<List<{{ ClassName }}ListOutput>> getList([ApiFilterBuilder? apiFilterBuilder]) async {
+    try {
+      final List<HttpOutput> result = await Http.listOutput(
+        api: HttpApiEnum.api,
+        route: "{{ route }}",
+        queryBuilder: apiFilterBuilder,
+      );
+      return result.map({{ ClassName }}ListOutput.fromOutput).toList();
+    } catch (e) {
+      Logger().e("{{ ClassName }}Service.getList: $e");
+      rethrow;
+    }
+  }
+
+  static Future<{{ ClassName }}DetailOutput> post({{ ClassName }}PostInput input) async {
+    try {
+      return {{ ClassName }}DetailOutput.fromOutput(await Http.input(
+        method: HttpMethodEnum.post,
+        api: HttpApiEnum.api,
+        route: "{{ route }}",
+        body: input,
+      ));
+    } catch (e) {
+      Logger().e("{{ ClassName }}Service.post: $e");
+      rethrow;
+    }
+  }
+
+  static Future<{{ ClassName }}DetailOutput> put(int id, {{ ClassName }}PutInput input) async {
+    try {
+      return {{ ClassName }}DetailOutput.fromOutput(await Http.input(
+        method: HttpMethodEnum.put,
+        api: HttpApiEnum.api,
+        route: "{{ route }}/$id",
+        body: input,
+      ));
+    } catch (e) {
+      Logger().e("{{ ClassName }}Service.put: $e");
+      rethrow;
+    }
+  }
+
+  static Future<void> delete(int id) async {
+    try {
+      await Http.request(
+        method: HttpMethodEnum.delete,
+        api: HttpApiEnum.api,
+        route: "{{ route }}/$id",
+      );
+    } catch (e) {
+      Logger().e("{{ ClassName }}Service.delete: $e");
+      rethrow;
+    }
+  }
+}

@@ -1,0 +1,54 @@
+name: flutter_skeleton
+description: "Flutter application skeleton — MVVM widgets, typed API layer, providers, go_router."
+# Private package: never published to pub.dev.
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  # Declarative routing (ShellRoute + typed path/query params).
+  go_router: ^14.8.1
+  # Raw HTTP client wrapped by lib/api/http/http.dart.
+  http: ^1.3.0
+  # Loads .env.local at startup (API host, logger flags, page size).
+  flutter_dotenv: ^5.2.1
+  # ChangeNotifier state management.
+  provider: ^6.1.4
+  logger: ^2.5.0
+  # Used by FilePathBuilder (code generators).
+  path: ^1.9.1
+  # i18n with JSON translation files in assets/translations/.
+  easy_localization: ^3.0.7
+  intl: ">=0.19.0 <1.0.0"
+  # Network status stream for OfflineBanner.
+  connectivity_plus: ^6.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  # Code generators in cli/generation/.
+  jinja: ^0.6.2
+  args: ^2.7.0
+  # Exposes SingleChildWidget — used by widget test helpers for typed provider lists.
+  nested: ^1.0.0
+  # In-memory SharedPreferences for EasyLocalization in widget tests.
+  shared_preferences: ^2.3.3
+  # custom_lint plugin framework + solid_lints for complexity metrics.
+  custom_lint: ^0.8.1
+  solid_lints: ^0.3.3
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - .env.local
+    - assets/translations/

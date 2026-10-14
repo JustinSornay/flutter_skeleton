@@ -1,0 +1,13 @@
+// list_output.dart
+//
+// Item representation returned by `GET {{ route }}`.
+
+import "package:flutter_skeleton/api/dtos/_base/output/output_interface.dart";
+import "package:flutter_skeleton/api/http/http_output.dart";
+
+final class {{ ClassName }}ListOutput implements OutputInterface {
+  final int id;
+
+  {{ ClassName }}ListOutput.fromOutput(HttpOutput output):
+    id = output.cast<int>("id");
+}
