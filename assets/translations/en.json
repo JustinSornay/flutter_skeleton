@@ -44,6 +44,7 @@
     "fr": "Français",
     "en": "English"
   },
+  "custom": {},
   "about": {
     "title": "Flutter Skeleton",
     "body": "Flutter application skeleton: MVVM widgets, typed API layer, providers and go_router. Demo data comes from JSONPlaceholder."

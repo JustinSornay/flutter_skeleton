@@ -44,6 +44,7 @@
     "fr": "Français",
     "en": "English"
   },
+  "custom": {},
   "about": {
     "title": "Flutter Skeleton",
     "body": "Squelette d'application Flutter : widgets MVVM, couche API typée, providers et go_router. Les données de démonstration proviennent de JSONPlaceholder."

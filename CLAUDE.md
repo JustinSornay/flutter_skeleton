@@ -63,7 +63,7 @@ Shared helpers in `test/helpers/widget_test_helpers.dart`:
 
 | Helper | Use for |
 |---|---|
-| `pumpApp(tester, child, providers:)` | Isolated widgets; `.tr()` returns the raw key |
+| `pumpApp(tester, child, providers:, theme:)` | Isolated widgets; `.tr()` returns the raw key; `theme` defaults to `AppTheme.light()` |
 | `pumpWithRouter(tester, child, extraRoutes:)` | Widgets calling `context.go()` |
 | `pumpLocalizedRouter(tester, initialLocation:)` | The real shell (router + Layout + EasyLocalization with real translations); required when a widget reads `context.locale` |
 | `defaultTestProviders(offline:)` | Global providers without platform channels |
@@ -99,6 +99,8 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 | `flutter_dotenv` | `.env.local` loading at startup |
 | `easy_localization` | i18n with JSON translation files (persists the chosen locale) |
 | `connectivity_plus` | Network status stream (`OfflineBanner`) |
+| `fl_chart` | Charts in `widgets/custom/` |
+| `flutter_map` + `latlong2` | Tile maps in `widgets/custom/` |
 | `logger` | Logging |
 | `custom_lint` + `solid_lints` (dev) | Complexity metrics |
 | `jinja` + `args` (dev) | Code generators |
@@ -109,7 +111,7 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 
 - **Look before you create**: search `utils/`, `widgets/custom/`, `api/http/` before writing anything new. Use the existing `Listing` widget for paginated lazy-loaded lists.
 - **No project-specific names**: keep nomenclature generic (`api`, `dto`, `model`) — never use the app name in folder/variable names.
-- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`).
+- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`).
 - **Mirror existing patterns**: inspect similar files before writing new ones.
 - **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate`, which already does). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
 
@@ -126,14 +128,15 @@ routing/
   pages/        # Page widgets: thin template + render widget wrappers
   router/       # GoRouter config
   templates/    # Page layout templates (FullPageTemplate)
-theme/          # AppTheme (light / dark from one seed colour)
+theme/          # AppTheme (light / dark from one seed colour), StatusTones
 utils/          # Env, LoadState, parsers, builders, logger filters
 widgets/
   constants.dart  # spacing grid, content width, motion, resolveMotion()
   core/
     render/     # Screen-level MVVM triads (index + view_model + view)
     decorators/ # Content-agnostic wrappers (SkeletonPulse)
-  custom/       # Generic reusable widgets (Listing, Loader)
+  custom/       # Generic reusable widgets (Listing, Loader, …)
+    _base/      # Shared value classes: ChoiceOption<T>, ValueBand
   layout/       # App shell, global overlays, banners
 main.dart       # Bootstrap, providers, MaterialApp.router
 ```
@@ -273,6 +276,7 @@ Pages (`routing/pages/`) are thin: a template (`FullPageTemplate`) plus the rend
 **Navigation rules:**
 - Always use `context.go()` — never `context.push()`. This is a URL-driven app; `push()` stacks history entries and breaks back-button behavior.
 - Dialogs are mounted with `ModalProvider.show(AppModal(...))`, not `Navigator.push` / `showDialog`.
+- Bottom sheets: `custom/` sheets are content-only (no drag handle, no provider / service / `context.go`). The host mounts them with `showModalBottomSheet(showDragHandle: true, …)` or `ModalProvider.show(AppModal(...))` and reacts to their callbacks. See `lib/widgets/custom/README.md`.
 - Guards: add a `redirect` to `createRouter()` and pass the providers it reads as `refreshListenable`.
 - `Layout` (installed by `MaterialApp.router.builder`) sits **above** the Navigator: widgets rendered there have no `Overlay` (no `Tooltip`, no `PopupMenuButton`).
 
@@ -290,6 +294,8 @@ Handled by `EasyLocalization`. Supported locales and asset path live in `data/lo
 `theme/app_theme.dart` builds Material 3 light and dark themes from one seed colour (`AppTheme.seed`, `#3B7054`); `main.dart` uses both (`ThemeMode.system`). Tests use the same `AppTheme.light()`.
 
 **Never hardcode colours in widgets.** Always read `ColorScheme` tokens (`cs.primary`, `cs.surface`, `cs.onSurface`, `cs.onSurfaceVariant`, `cs.outlineVariant`, `cs.error`, `cs.errorContainer`, …) so both brightnesses stay correct.
+
+Status colours come from the `StatusTones` theme extension (`theme/status_tones.dart`, registered by `AppTheme`): `StatusTones.colorsOf(context, StatusTone.success)` returns `ToneColors(foreground, container, onContainer)` for `neutral`, `primary`, `info`, `success`, `warning`, `danger` (each ≥ 4.5:1, enforced by `test/unit/theme/status_tones_test.dart`). `StatusTone.icon` gives the non-colour cue. Widgets never declare their own tone enums; theme files are the only place hex values live.
 
 Spacing follows an 8 dp grid: use `kDefaultPadding` multiples, `kSectionGap` between sections, `kContentMaxWidth` for centred content (`widgets/constants.dart`).
 
