@@ -37,7 +37,7 @@ la démo fonctionne donc sans backend.
 | **Thème** (`lib/theme/`) | Material 3 clair + sombre depuis une couleur de marque, tokens `ColorScheme` uniquement, extension `StatusTones` (tons de statut contrastés ≥ 4.5:1 en clair et en sombre) |
 | **i18n** | Français (référence) + anglais, test de parité des clés |
 | **Outillage** | Générateurs de widgets et de services (`cli/`), lints stricts + `solid_lints`, gate qualité (`tooling/hooks/test-gate.sh`) branchée sur le hook `Stop` de Claude Code |
-| **Tests** | 85 tests unitaires et widgets (Http sans réseau via `MockClient`, Listing, layout, démo, routeur avec vraies traductions) |
+| **Tests** | 3 036 tests unitaires et widgets (Http sans réseau via `MockClient`, Listing, layout, démo, routeur avec vraies traductions, un fichier de test par widget de `custom/`, contraste des tons de statut) |
 
 ## Architecture
 
