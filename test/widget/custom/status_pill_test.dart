@@ -2,9 +2,10 @@
 //
 // Widget tests for StatusPill: the pill composed from PillBadge with the tone
 // container / onContainer colours, icon and dense pass-through, the compact
-// 24 dp circle (measured letter width, 1–2 character assert), the empty-label
-// shrink in both variants, single-node semantics, a narrow parent, and the
-// dark theme for every tone.
+// 24 dp circle (measured letter width, growth with the text scale, 1–2
+// character and blank-letter asserts), the empty-label shrink in both
+// variants, single-node semantics, a narrow parent, and the dark theme for
+// every tone.
 
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
@@ -149,6 +150,33 @@ void main() {
       expect(_text(tester, "--").maxLines, 1);
       final RenderParagraph paragraph = tester.renderObject<RenderParagraph>(find.text("--"));
       expect(paragraph.getMaxIntrinsicWidth(double.infinity), lessThanOrEqualTo(24));
+    });
+
+    testWidgets("the circle follows the text scale, so the code stays whole and centred", (WidgetTester tester) async {
+      // Expected diameter per text scale: never below 24 dp, scaled like the code's font above 1x.
+      const List<(double, double)> cases = <(double, double)>[(0.5, 24), (1.5, 36), (2, 48)];
+      for (final (double scale, double diameter) in cases) {
+        await pumpApp(
+          tester,
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: const Center(child: StatusPill.compact(letter: "--", label: "No data")),
+          ),
+        );
+        final Rect circle = tester.getRect(find.byType(StatusPill));
+        final RenderParagraph code = tester.renderObject<RenderParagraph>(find.text("--"));
+        final double codeWidth = code.getMaxIntrinsicWidth(double.infinity);
+
+        expect(circle.size, Size.square(diameter), reason: "scale $scale");
+        expect(codeWidth, lessThanOrEqualTo(circle.width), reason: "scale $scale");
+        expect(tester.getCenter(find.text("--")), offsetMoreOrLessEquals(circle.center), reason: "scale $scale");
+      }
+    });
+
+    testWidgets("a blank letter is rejected when built (no colour-only circle)", (WidgetTester tester) async {
+      await pumpApp(tester, const Center(child: StatusPill.compact(letter: " ", label: _label)));
+
+      expect(tester.takeException(), isAssertionError);
     });
 
     test("an empty letter is rejected (no colour-only circle)", () {

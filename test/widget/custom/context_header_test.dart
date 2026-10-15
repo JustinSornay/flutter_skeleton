@@ -3,10 +3,12 @@
 // Widget tests for ContextHeader: icon / title / subtitle structure, the
 // three title states (text, null skeleton, empty), the optional change link
 // (callback, custom label, hidden without callback, 48 dp hit area, single
-// semantics node with a tap action), long-title ellipsis, the placeholder
+// semantics node with a tap action), the link capped at 40 % of the row and
+// level with the first text line, long-title ellipsis, the placeholder
 // holding the title's line height, content height in a bounded parent,
-// reduced motion, RTL order, no Material ancestor needed, and ColorScheme
-// tokens (including the rendered divider colour) in light and dark themes.
+// intrinsic sizing without a link, reduced motion, RTL order, no Material
+// ancestor needed, and ColorScheme tokens (including the rendered divider
+// colour) in light and dark themes. One function per group keeps main short.
 
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
@@ -61,20 +63,51 @@ Color? _dividerLineColor(WidgetTester tester) {
   return border?.bottom.color;
 }
 
-/// Top of the subtitle for [title], at [textScale].
-Future<double> _subtitleTop(WidgetTester tester, String? title, double textScale) async {
+/// Pumps a header with a link at [textScale] text scaling.
+Future<void> _pumpScaled(
+  WidgetTester tester,
+  double textScale, {
+  String? title = _title,
+  String? changeLabel,
+  Size? surfaceSize,
+}) async {
   await pumpApp(
     tester,
     MediaQuery(
       data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-      child: ContextHeader(icon: Icons.place_outlined, title: title, subtitle: _subtitle, onChange: () {}),
+      child: ContextHeader(
+        icon: Icons.place_outlined,
+        title: title,
+        subtitle: _subtitle,
+        onChange: () {},
+        changeLabel: changeLabel,
+      ),
     ),
+    surfaceSize: surfaceSize,
   );
   await tester.pump(const Duration(milliseconds: 100));
+}
+
+/// Top of the subtitle for [title], at [textScale].
+Future<double> _subtitleTop(WidgetTester tester, String? title, double textScale) async {
+  await _pumpScaled(tester, textScale, title: title);
   return tester.getTopLeft(find.text(_subtitle)).dy;
 }
 
+/// Vertical centre of the link label.
+double _linkCentre(WidgetTester tester, String label) => tester.getCenter(find.text(label)).dy;
+
 void main() {
+  _structureTests();
+  _titleStateTests();
+  _changeLinkTests();
+  _linkLayoutTests();
+  _semanticsTests();
+  _reducedMotionTests();
+  _themeTokenTests();
+}
+
+void _structureTests() {
   group("structure", () {
     testWidgets("renders the icon, the title and the subtitle", (WidgetTester tester) async {
       await _pump(tester);
@@ -124,8 +157,22 @@ void main() {
       final double linkX = tester.getCenter(find.text(_changeKey)).dx;
       expect(iconX, greaterThan(linkX));
     });
-  });
 
+    testWidgets("without a link it works under an intrinsic-size parent", (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        const IntrinsicHeight(
+          child: ContextHeader(icon: Icons.place_outlined, title: _title, subtitle: _subtitle),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text(_title), findsOneWidget);
+    });
+  });
+}
+
+void _titleStateTests() {
   group("title states", () {
     testWidgets("null title shows one pulsing 120 x 14 placeholder and keeps the subtitle", (WidgetTester tester) async {
       await _pump(tester, title: null);
@@ -185,11 +232,9 @@ void main() {
 
     testWidgets("a long title stays on one line with an ellipsis", (WidgetTester tester) async {
       final String longTitle = "A very long heading " * 4;
-      // The link takes its natural width, so a realistic short label is used
-      // (the raw key is wider than a 320 dp row in the square test font).
       await pumpApp(
         tester,
-        ContextHeader(icon: Icons.place_outlined, title: longTitle, subtitle: _subtitle, onChange: () {}, changeLabel: "Change"),
+        ContextHeader(icon: Icons.place_outlined, title: longTitle, subtitle: _subtitle, onChange: () {}),
         surfaceSize: const Size(320, 200),
       );
 
@@ -199,10 +244,12 @@ void main() {
       expect(title.overflow, TextOverflow.ellipsis);
       final RenderParagraph paragraph = tester.renderObject<RenderParagraph>(find.text(longTitle));
       expect(paragraph.didExceedMaxLines, isTrue);
-      expect(tester.getTopRight(find.text(longTitle)).dx, lessThan(tester.getTopLeft(find.text("Change")).dx));
+      expect(tester.getTopRight(find.text(longTitle)).dx, lessThan(tester.getTopLeft(find.text(_changeKey)).dx));
     });
   });
+}
 
+void _changeLinkTests() {
   group("change link", () {
     testWidgets("tapping the default label calls onChange once", (WidgetTester tester) async {
       int calls = 0;
@@ -252,7 +299,66 @@ void main() {
       expect(calls, 1);
     });
   });
+}
 
+void _linkLayoutTests() {
+  group("link layout", () {
+    testWidgets("a long label at 320 dp and 2x text is capped, ellipsised and read in full", (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      const String longLabel = "Pick another one from the full list";
+      await _pumpScaled(tester, 2, changeLabel: longLabel, surfaceSize: const Size(320, 300));
+
+      expect(tester.takeException(), isNull);
+      // Row width: 320 minus 2 x 16 dp of horizontal padding.
+      const double rowWidth = 320 - kDefaultPadding * 4;
+      expect(tester.getSize(find.byType(InkWell)).width, lessThanOrEqualTo(rowWidth * 0.4));
+      expect(tester.getSize(find.text(_title)).width, greaterThan(rowWidth * 0.4));
+      final Text link = _text(tester, longLabel);
+      expect(link.maxLines, 1);
+      expect(link.overflow, TextOverflow.ellipsis);
+      expect(tester.renderObject<RenderParagraph>(find.text(longLabel)).didExceedMaxLines, isTrue);
+      expect(find.bySemanticsLabel(longLabel), findsOneWidget);
+      handle.dispose();
+    });
+
+    testWidgets("a short label keeps its natural width", (WidgetTester tester) async {
+      await _pump(tester, changeLabel: "Edit");
+
+      expect(tester.renderObject<RenderParagraph>(find.text("Edit")).didExceedMaxLines, isFalse);
+      expect(
+        tester.getSize(find.byType(InkWell)).width,
+        moreOrLessEquals(tester.getSize(find.text("Edit")).width + kDefaultPadding * 2),
+      );
+    });
+
+    for (final double scale in <double>[1, 2]) {
+      testWidgets("x$scale: the label is level with the title line", (WidgetTester tester) async {
+        await _pumpScaled(tester, scale);
+
+        expect(_linkCentre(tester, _changeKey), moreOrLessEquals(tester.getCenter(find.text(_title)).dy, epsilon: 0.5));
+      });
+    }
+
+    testWidgets("the label is level with the placeholder while the title loads", (WidgetTester tester) async {
+      await _pumpScaled(tester, 1, title: null);
+
+      expect(
+        _linkCentre(tester, _changeKey),
+        moreOrLessEquals(tester.getCenter(find.byType(SkeletonBlock)).dy, epsilon: 0.5),
+      );
+    });
+
+    testWidgets("with an empty title the label is level with the subtitle", (WidgetTester tester) async {
+      await _pumpScaled(tester, 1, title: "");
+
+      expect(_linkCentre(tester, _changeKey), moreOrLessEquals(tester.getCenter(find.text(_subtitle)).dy, epsilon: 0.5));
+    });
+  });
+}
+
+void _semanticsTests() {
   group("semantics", () {
     testWidgets("the link is one button node with a tap action and the visible label", (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
@@ -293,7 +399,9 @@ void main() {
       handle.dispose();
     });
   });
+}
 
+void _reducedMotionTests() {
   group("reduced motion", () {
     testWidgets("the placeholder is static and pumpAndSettle completes", (WidgetTester tester) async {
       await pumpApp(
@@ -310,7 +418,9 @@ void main() {
       expect(find.ancestor(of: find.byType(SkeletonBlock), matching: find.byType(Opacity)), findsNothing);
     });
   });
+}
 
+void _themeTokenTests() {
   group("theme tokens", () {
     for (final (String name, ThemeData Function() theme) in <(String, ThemeData Function())>[
       ("light", AppTheme.light),

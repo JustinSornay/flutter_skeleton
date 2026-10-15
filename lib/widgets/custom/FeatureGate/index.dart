@@ -27,14 +27,17 @@ enum GateDisplayMode {
   /// button only when [FeatureGate.onUnlock] is set). Default.
   lockCard,
 
-  /// The real child at 40 % opacity, non-interactive and hidden from screen
-  /// readers, with the lock badge in its top-right corner. The whole area is
-  /// one tap target calling [FeatureGate.onUnlock].
+  /// The real child at 40 % opacity, with the lock badge in its top-right
+  /// corner. The child cannot be reached by pointer, keyboard focus (Tab) or
+  /// screen readers. The whole area is one tap target calling
+  /// [FeatureGate.onUnlock].
   dimmed,
 
   /// A blurred static mock ([FeatureGate.teaserBuilder], else a generic
-  /// placeholder) under a scrim, with a centred pill (badge + label). It
-  /// NEVER builds the real child and is not tappable. Needs a bounded width.
+  /// placeholder) under a scrim, with a centred pill (badge + label). The
+  /// mock cannot be reached by pointer, keyboard focus or screen readers,
+  /// and the teaser is at least as tall as the pill. It NEVER builds the real
+  /// child and is not tappable. Needs a bounded width.
   teaser,
 
   /// One compact row: lock icon, label and badge, at least [kMinTapTarget]

@@ -2,8 +2,11 @@
 //
 // StatusPill — non-interactive status label tinted by a StatusTone: a
 // PillBadge filled with the tone's container colour (default constructor) or
-// a 24 × 24 circle showing a one- or two-character code (StatusPill.compact).
-// An empty label renders nothing. The tree lives in view.dart.
+// a 24 dp circle, scaled with the text, showing a one- or two-character code
+// (StatusPill.compact). An empty label renders nothing. The tree lives in
+// view.dart.
+
+import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
@@ -24,6 +27,8 @@ part "view.dart";
 ///   padding or 8 / 4 dp when [dense]).
 /// - [StatusPill.compact]: a 24 × 24 circle showing [letter] (one or two
 ///   characters, asserted); [label] is not drawn but is the accessible name.
+///   Under a larger text scale the circle grows with the code's font, so the
+///   code stays whole and centred.
 /// - An empty [label] renders `SizedBox.shrink()` in both variants, so a host
 ///   can mount it before its data is ready, or for a status it does not show,
 ///   without a guard.
@@ -43,9 +48,10 @@ final class StatusPill extends StatelessWidget with _ViewMixin {
   /// variant it is only the accessible name. Empty → nothing is rendered.
   final String label;
 
-  /// One or two characters drawn in the compact circle (asserted: 1–2 UTF-16
-  /// code units, so the circle never shows colour alone and nothing is
-  /// clipped). Null for the pill.
+  /// One or two characters drawn in the compact circle. Asserted in debug
+  /// builds: 1–2 UTF-16 code units (constructor) and not blank (build), so the
+  /// circle never shows colour alone; the circle scales with the text, so the
+  /// code is not clipped. Null for the pill.
   final String? letter;
 
   /// Semantic tone giving the fill and the text colour.
@@ -70,7 +76,8 @@ final class StatusPill extends StatelessWidget with _ViewMixin {
     this.semanticsLabel,
   }) : letter = null;
 
-  /// 24 × 24 circle showing [letter]; [label] is announced instead.
+  /// Circle (24 dp at the default text scale) showing [letter]; [label] is
+  /// announced instead.
   const StatusPill.compact({
     super.key,
     required String this.letter,

@@ -10,6 +10,8 @@
 // is declared here, the ScrollController lives in view_model.dart, the list
 // tree in view.dart and the private row in widgets/ranked_list_row.dart.
 
+import "dart:math" as math;
+
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
@@ -72,9 +74,10 @@ final class RankedListEntry<T> {
 /// Compact list of ranked, tappable rows, capped at [maxHeight] and
 /// scrollable beyond it (always-visible scrollbar).
 ///
-/// - Rows, in the given order: a 22 dp rank circle ([RankedListEntry.rank],
-///   else position + 1), the label (`bodyMedium` w700) with an optional muted
-///   detail line, the score as a dense [StatusPill] in the entry's tone
+/// - Rows, in the given order: a rank circle ([RankedListEntry.rank], else
+///   position + 1; 22 dp, grown with the text scale), the label
+///   (`bodyMedium` w700) with an optional muted detail line, the score as a
+///   dense [StatusPill] in the entry's tone
 ///   (locale-formatted percentage, so the colour always comes with text), and
 ///   an optional decorative [trailingIcon] in a 26 dp circle. Each row is at
 ///   least [kMinTapTarget] tall and calls [onItemTap] with its value.
@@ -83,7 +86,8 @@ final class RankedListEntry<T> {
 /// - Active row (`entry.value == activeValue`): `cs.tertiaryContainer` fill,
 ///   `cs.tertiary` border, rank circle and trailing circle; it shows
 ///   [activeBadgeLabel] in a `cs.tertiary` on `cs.surface` badge and is
-///   announced as selected.
+///   announced as selected. The badge is the only visible non-colour cue of
+///   the active row, so pass [activeBadgeLabel] whenever [activeValue] is set.
 /// - Header: shown when [title] or [headerTrailing] is set. [title]
 ///   (`labelSmall` w700, `cs.onSurfaceVariant`, a semantic header) is
 ///   followed by the item count (`custom.ranked_list.count`); [headerTrailing]
@@ -109,10 +113,14 @@ final class RankedList<T> extends StatefulWidget {
   final ValueChanged<T> onItemTap;
 
   /// Value of the highlighted row. Null → no active row.
+  ///
+  /// Without [activeBadgeLabel] the active row differs on screen by colour
+  /// only (screen readers still announce it as selected), so set both.
   final T? activeValue;
 
   /// Badge text shown inside the active row (e.g. "SELECTED"). Null or
-  /// empty → no badge.
+  /// empty → no badge. It is the visible non-colour cue of the active row
+  /// (WCAG 1.4.1): hosts that set [activeValue] should pass it.
   final String? activeBadgeLabel;
 
   /// Header title, already localised. Null → no title and no count.

@@ -6,6 +6,8 @@
 // semantics (default label, override, hint, button flag), no overflow at
 // 300 dp, ColorScheme colours, and the dark theme for every tone.
 
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
@@ -22,12 +24,25 @@ const String _badge = "Ready";
 const String _hintKey = "custom.list_entry_card.open_hint";
 const Key _bodyKey = Key("body");
 
+/// Padding above and below the card content (16 dp).
+const double _verticalPadding = kDefaultPadding * 2;
+
 /// Pumps [card] in a 300 dp wide column (the narrowest supported list width).
 Future<void> _pump(WidgetTester tester, Widget card, {ThemeData? theme}) {
   return pumpApp(
     tester,
     Align(alignment: Alignment.topLeft, child: SizedBox(width: 300, child: card)),
     theme: theme,
+  );
+}
+
+/// [card] with its text scaled by [factor], to shrink or grow the titles.
+Widget _scaledText(Widget card, double factor) {
+  return Builder(
+    builder: (BuildContext context) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(factor)),
+      child: card,
+    ),
   );
 }
 
@@ -50,13 +65,18 @@ void main() {
     });
 
     testWidgets("a null or empty subtitle is hidden and leaves no gap", (WidgetTester tester) async {
-      await _pump(tester, const ListEntryCard(title: _title));
-      final double heightWithoutSubtitle = tester.getSize(find.byType(ListEntryCard)).height;
-      expect(_inCard(find.byType(Text)), findsOneWidget);
+      for (final String? subtitle in <String?>[null, ""]) {
+        await _pump(tester, ListEntryCard(title: _title, subtitle: subtitle));
+        final double titleHeight = tester.getSize(find.text(_title)).height;
 
-      await _pump(tester, const ListEntryCard(title: _title, subtitle: ""));
-      expect(_inCard(find.byType(Text)), findsOneWidget);
-      expect(tester.getSize(find.byType(ListEntryCard)).height, heightWithoutSubtitle);
+        expect(_inCard(find.byType(Text)), findsOneWidget, reason: "subtitle: $subtitle");
+        // Title + 16 dp padding above and below, nothing else (48 dp floor).
+        expect(
+          tester.getSize(find.byType(ListEntryCard)).height,
+          math.max(titleHeight + 2 * _verticalPadding, kMinTapTarget),
+          reason: "subtitle: $subtitle",
+        );
+      }
     });
 
     testWidgets("title uses onSurface, subtitle onSurfaceVariant", (WidgetTester tester) async {
@@ -189,10 +209,15 @@ void main() {
       expect(chevron.size, 18);
     });
 
-    testWidgets("is at least kMinTapTarget tall", (WidgetTester tester) async {
-      await _pump(tester, ListEntryCard(title: "A", onTap: () {}));
+    testWidgets("a card shorter than kMinTapTarget is raised to it", (WidgetTester tester) async {
+      // Without a chevron and at half text size the content is about 40 dp.
+      for (final VoidCallback? onTap in <VoidCallback?>[null, () {}]) {
+        await _pump(tester, _scaledText(ListEntryCard(title: "A", showChevron: false, onTap: onTap), 0.5));
+        final double natural = tester.getSize(find.text("A")).height + 2 * _verticalPadding;
 
-      expect(tester.getSize(find.byType(ListEntryCard)).height, greaterThanOrEqualTo(kMinTapTarget));
+        expect(natural, lessThan(kMinTapTarget), reason: "precondition, tappable: ${onTap != null}");
+        expect(tester.getSize(find.byType(ListEntryCard)).height, kMinTapTarget, reason: "tappable: ${onTap != null}");
+      }
     });
   });
 

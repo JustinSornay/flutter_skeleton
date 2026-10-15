@@ -18,6 +18,8 @@ part "widgets/swimlane_tile.dart";
 final class SwimlaneItem<T> {
   /// Identity of the tile: compared with `==` against
   /// [SwimlaneCard.selectedId] and passed to [SwimlaneCard.onSelected].
+  /// Pass enums, ids or value types: an object without value equality (a DTO
+  /// rebuilt on every fetch) never matches [SwimlaneCard.selectedId].
   final T id;
 
   /// Headline shown large at the top of the tile, already formatted by the
@@ -64,10 +66,11 @@ final class SwimlaneItem<T> {
 /// - Tile (radius 8, `cs.surfaceContainer`, 8 dp padding): the value
 ///   (18 / w800, scaled down to fit), the caption (`labelSmall`,
 ///   `cs.onSurfaceVariant`) and the optional badge, spread top to bottom.
-/// - Selected tile ([SwimlaneItem.id] == [selectedId]): accent fill at 12 %
-///   and a 1.5 dp accent outline, animated over `kMotionShort`
-///   (`easeOutCubic`, instant under reduced motion). The accent is the tile
-///   tone `foreground`, else `cs.primary`. The outline stroke and the
+/// - Selected tile ([SwimlaneItem.id] == [selectedId]): opaque fill (the
+///   accent at 8 % composited over `cs.surfaceContainer`, so the value text
+///   keeps at least 4.5:1) and a 1.5 dp accent outline, animated over
+///   `kMotionShort` (`easeOutCubic`, instant under reduced motion). The
+///   accent is the tile tone `foreground`, else `cs.primary`. The outline stroke and the
 ///   `selected` semantics flag mark the selection, not the fill alone.
 /// - Tone: when [SwimlaneItem.tone] carries a meaning (a status), the host
 ///   also states it in [SwimlaneItem.badge] or [SwimlaneItem.label], so the

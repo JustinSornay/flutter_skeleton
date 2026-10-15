@@ -3,16 +3,28 @@
 // Widget tests for FeatureGate: the unlocked pass-through in every mode, then
 // each locked mode (lock card, dimmed, teaser, hint, hidden): structure,
 // default and custom strings, onUnlock wiring, the teaser never building the
-// child, the dimmed child and the teaser mock staying inert, semantics, 48 dp
-// targets, layout and the ColorScheme tokens under the light and dark themes.
+// child, the dimmed child and the teaser mock staying inert (pointer,
+// keyboard, screen readers), semantics, 48 dp targets, layout (the teaser pill
+// at a 2x text scale) and the ColorScheme tokens under the light and dark
+// themes. A last group reads the real fr / en semantics strings through
+// EasyLocalization; it resets the easy_localization singleton afterwards, so
+// the raw-key tests pass in any order.
 
+import "package:easy_localization/easy_localization.dart";
+// Localization.load is the only way to empty the translations singleton that
+// EasyLocalization fills; see _pumpLocalized.
+// ignore: implementation_imports
+import "package:easy_localization/src/localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
+import "package:flutter_skeleton/data/locales.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/FeatureGate/index.dart";
 import "package:flutter_skeleton/widgets/custom/PillBadge/index.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:shared_preferences/shared_preferences.dart";
 
 import "../../helpers/widget_test_helpers.dart";
 
@@ -72,7 +84,63 @@ ColorScheme _scheme(WidgetTester tester) {
   return Theme.of(tester.element(find.byType(FeatureGate))).colorScheme;
 }
 
+/// Sends Tab then Enter [times] times, the way a keyboard user walks the
+/// focus order and activates what it lands on.
+Future<void> _tabAndEnter(WidgetTester tester, {int times = 1}) async {
+  for (int i = 0; i < times; i++) {
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+  }
+}
+
+/// Pumps [child] under EasyLocalization with the real translation assets in
+/// [locale]. The loaded translations live in a singleton that outlives the
+/// test; the tear-down empties it so every later `.tr()` returns the raw key
+/// again, whatever the test order.
+Future<void> _pumpLocalized(WidgetTester tester, Locale locale, Widget child) async {
+  addTearDown(() => Localization.load(AppLocales.fallback));
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+  await EasyLocalization.ensureInitialized();
+  // Translation assets are read with real I/O, which fake-async test time
+  // never completes on its own.
+  await tester.runAsync(() async {
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: AppLocales.supported,
+        path: AppLocales.path,
+        fallbackLocale: AppLocales.fallback,
+        startLocale: locale,
+        saveLocale: false,
+        child: Builder(
+          builder: (BuildContext context) => MaterialApp(
+            localizationsDelegates: context.localizationDelegates,
+            supportedLocales: context.supportedLocales,
+            locale: context.locale,
+            theme: AppTheme.light(),
+            home: Scaffold(body: child),
+          ),
+        ),
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  });
+  await tester.pumpAndSettle();
+}
+
 void main() {
+  _unlockedTests();
+  _lockCardTests();
+  _dimmedTests();
+  _teaserTests();
+  _hintTests();
+  _hiddenTests();
+  _themeTests();
+  _localizedTests();
+}
+
+void _unlockedTests() {
   group("FeatureGate — unlocked", () {
     for (final GateDisplayMode mode in GateDisplayMode.values) {
       testWidgets("returns the child unchanged in ${mode.name} mode", (WidgetTester tester) async {
@@ -88,7 +156,9 @@ void main() {
       });
     }
   });
+}
 
+void _lockCardTests() {
   group("FeatureGate — lockCard", () {
     testWidgets("shows the lock icon, the label and the default button, not the child",
         (WidgetTester tester) async {
@@ -198,7 +268,9 @@ void main() {
       handle.dispose();
     });
   });
+}
 
+void _dimmedTests() {
   group("FeatureGate — dimmed", () {
     testWidgets("renders the child at 0.4 opacity inside an ignoring IgnorePointer",
         (WidgetTester tester) async {
@@ -258,6 +330,47 @@ void main() {
       expect(inner, 0);
     });
 
+    testWidgets("Tab + Enter reaches the unlock area, never a button in the child",
+        (WidgetTester tester) async {
+      int unlocks = 0;
+      int inner = 0;
+      await pumpApp(
+        tester,
+        _gate(
+          mode: GateDisplayMode.dimmed,
+          onUnlock: () => unlocks++,
+          child: TextButton(onPressed: () => inner++, child: const Text("inner")),
+        ),
+      );
+
+      await _tabAndEnter(tester, times: 4);
+
+      expect(inner, 0);
+      expect(unlocks, greaterThan(0));
+    });
+
+    testWidgets("without onUnlock, Tab + Enter cannot reach a button in the child",
+        (WidgetTester tester) async {
+      int inner = 0;
+      await pumpApp(
+        tester,
+        _gate(
+          mode: GateDisplayMode.dimmed,
+          child: TextButton(onPressed: () => inner++, child: const Text("inner")),
+        ),
+      );
+
+      await _tabAndEnter(tester, times: 2);
+
+      expect(inner, 0);
+      expect(
+        tester.widget<ExcludeFocus>(
+          find.ancestor(of: find.byType(TextButton), matching: find.byType(ExcludeFocus)).first,
+        ).excluding,
+        isTrue,
+      );
+    });
+
     testWidgets("without onUnlock nothing is tappable", (WidgetTester tester) async {
       await pumpApp(tester, _gate(mode: GateDisplayMode.dimmed));
 
@@ -298,7 +411,9 @@ void main() {
       handle.dispose();
     });
   });
+}
 
+void _teaserTests() {
   group("FeatureGate — teaser", () {
     testWidgets("never builds the real child", (WidgetTester tester) async {
       bool built = false;
@@ -399,6 +514,27 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets("Tab + Enter cannot reach a button in the host mock", (WidgetTester tester) async {
+      int presses = 0;
+      int unlocks = 0;
+      await pumpApp(
+        tester,
+        _gate(
+          mode: GateDisplayMode.teaser,
+          onUnlock: () => unlocks++,
+          teaserBuilder: (BuildContext context) => TextButton(
+            onPressed: () => presses++,
+            child: const Text("mockbtn"),
+          ),
+        ),
+      );
+
+      await _tabAndEnter(tester, times: 2);
+
+      expect(presses, 0);
+      expect(unlocks, 0);
+    });
+
     testWidgets("the cs.scrim overlay at 30 % covers the whole teaser", (WidgetTester tester) async {
       await pumpApp(tester, _gate(mode: GateDisplayMode.teaser));
       final ColorScheme cs = _scheme(tester);
@@ -437,8 +573,40 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(tester.getSize(find.byType(FeatureGate)).height, greaterThanOrEqualTo(kMinTapTarget));
     });
-  });
 
+    testWidgets("a tiny teaserBuilder grows to fit the whole pill at a 2x text scale",
+        (WidgetTester tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pumpApp(
+        tester,
+        Align(
+          alignment: Alignment.topCenter,
+          child: _gate(
+            mode: GateDisplayMode.teaser,
+            teaserBuilder: (BuildContext context) => const SizedBox(height: 4),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      final RenderBox pill = tester.renderObject<RenderBox>(
+        find.ancestor(of: _inGate(find.byType(PillBadge)), matching: find.byType(Container)).first,
+      );
+      final double pillNeeds = pill.getMinIntrinsicHeight(pill.size.width);
+      expect(pillNeeds, greaterThan(kMinTapTarget));
+      expect(pill.size.height, greaterThanOrEqualTo(pillNeeds));
+      expect(tester.getSize(find.byType(FeatureGate)).height, greaterThanOrEqualTo(pillNeeds));
+      final RenderParagraph badgeText = tester.renderObject<RenderParagraph>(find.text(_badge));
+      expect(
+        badgeText.size.height,
+        greaterThanOrEqualTo(badgeText.getMinIntrinsicHeight(double.infinity)),
+      );
+    });
+  });
+}
+
+void _hintTests() {
   group("FeatureGate — hint", () {
     testWidgets("shows the lock icon, the label and the badge, no button or child",
         (WidgetTester tester) async {
@@ -508,7 +676,9 @@ void main() {
       handle.dispose();
     });
   });
+}
 
+void _hiddenTests() {
   group("FeatureGate — hidden", () {
     testWidgets("renders nothing while locked", (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
@@ -522,7 +692,9 @@ void main() {
       handle.dispose();
     });
   });
+}
 
+void _themeTests() {
   group("FeatureGate — themes", () {
     for (final ThemeData theme in <ThemeData>[AppTheme.light(), AppTheme.dark()]) {
       final String name = theme.brightness.name;
@@ -543,6 +715,26 @@ void main() {
         expect(badge.backgroundColor, cs.primary);
         final Text label = tester.widget<Text>(find.text(_label));
         expect(label.style?.color, cs.onSurfaceVariant);
+      });
+    }
+  });
+}
+
+void _localizedTests() {
+  group("FeatureGate — real translations", () {
+    final Map<Locale, String> expected = <Locale, String>{
+      const Locale("fr"): "$_label : fonctionnalité verrouillée",
+      const Locale("en"): "$_label: locked feature",
+    };
+
+    for (final MapEntry<Locale, String> entry in expected.entries) {
+      testWidgets("the semantics label fills {label} in ${entry.key.languageCode}",
+          (WidgetTester tester) async {
+        final SemanticsHandle handle = tester.ensureSemantics();
+        await _pumpLocalized(tester, entry.key, _gate(onUnlock: () {}));
+
+        expect(_gateSemantics(tester).label, entry.value);
+        handle.dispose();
       });
     }
   });

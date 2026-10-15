@@ -3,13 +3,12 @@
 // Widget tests for PreviewConfirmSheet: title (header semantics, style),
 // subtitle (hidden, italic), the image header (placeholder, loaded image,
 // failed image, semantics), the stat pills (composed PillBadge / StatusPill,
-// tone colours, delta stats, one semantics node each, wrapping at phone
-// width), the confirm / cancel buttons (labels, callbacks, 48 dp, full
+// tone colours, delta stats and their locale-aware digits, captions, one
+// semantics node each, wrapping at phone width), the confirm / cancel buttons (labels, callbacks, 48 dp, full
 // width), the content-only contract (no handle, no pop), hosting in a modal
 // bottom sheet and in AppModal, short heights and the dark theme.
 
-import "dart:typed_data";
-
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/providers/modal_provider.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
@@ -34,6 +33,21 @@ final Uint8List _transparentPng = Uint8List.fromList(<int>[
   0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
   0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 ]);
+
+/// Image whose load always fails, synchronously and without any I/O.
+final class _FailingImage extends ImageProvider<_FailingImage> {
+  const _FailingImage();
+
+  @override
+  Future<_FailingImage> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<_FailingImage>(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(_FailingImage key, ImageDecoderCallback decode) {
+    return OneFrameImageStreamCompleter(Future<ImageInfo>.error(StateError("load failed")));
+  }
+}
 
 const String _confirmKey = "custom.preview_confirm_sheet.confirm";
 const String _cancelKey = "custom.preview_confirm_sheet.cancel";
@@ -158,11 +172,9 @@ void _imageHeaderTests() {
   testWidgets("an image that fails to load falls back to a 180 dp placeholder", (WidgetTester tester) async {
     await pumpApp(
       tester,
-      const PreviewConfirmSheet(title: "Item B", image: NetworkImage("https://example.test/x.png"), onConfirm: _noop),
+      const PreviewConfirmSheet(title: "Item B", image: _FailingImage(), onConfirm: _noop),
       surfaceSize: const Size(400, 800),
     );
-    // The test HttpClient answers 400; let the real async load fail.
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
     await tester.pump();
 
     expect(tester.takeException(), isNull);
@@ -296,7 +308,9 @@ void _statsTests() {
 
     final StatusPill pill = tester.widget<StatusPill>(find.byType(StatusPill));
     expect(pill.tone, StatusTone.neutral);
-    expect(pill.icon, StatusTone.neutral.icon);
+    // Neutral carries no status, so no glyph.
+    expect(pill.icon, isNull);
+    expect(find.byIcon(StatusTone.neutral.icon), findsNothing);
   });
 
   testWidgets("delta stats render as tinted pills", (WidgetTester tester) async {
@@ -319,7 +333,17 @@ void _statsTests() {
       pills.map((StatusPill pill) => pill.tone),
       <StatusTone>[StatusTone.success, StatusTone.danger, StatusTone.neutral],
     );
+    // "=" shows no minus-like neutral glyph.
+    expect(
+      pills.map((StatusPill pill) => pill.icon),
+      <IconData?>[StatusTone.success.icon, StatusTone.danger.icon, null],
+    );
+    expect(find.byIcon(StatusTone.neutral.icon), findsNothing);
   });
+
+  testWidgets("delta stats format their digits for the ambient locale", _deltaLocaleTest);
+
+  testWidgets("a caption is shown after the value and announced with it", _captionTest);
 
   testWidgets("each stat is one semantics node: 'label: value' or semanticsLabel", (WidgetTester tester) async {
     final SemanticsHandle handle = tester.ensureSemantics();
@@ -638,6 +662,73 @@ void _hostingTests() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+}
+
+Future<void> _deltaLocaleTest(WidgetTester tester) async {
+  final SemanticsHandle handle = tester.ensureSemantics();
+  await pumpApp(
+    tester,
+    Builder(
+      builder: (BuildContext context) => Localizations.override(
+        context: context,
+        locale: const Locale("fr"),
+        child: PreviewConfirmSheet(
+          title: "Item B",
+          stats: <PreviewStat>[
+            PreviewStat.delta(label: "Up", delta: 0.05),
+            PreviewStat.delta(label: "Down", delta: -0.05, caption: "Worse"),
+            PreviewStat.delta(label: "Flat", delta: 0.001),
+            PreviewStat.delta(label: "Whole", delta: 3, fractionDigits: 0),
+            PreviewStat.delta(label: "Large", delta: 1234.5),
+          ],
+          onConfirm: _noop,
+        ),
+      ),
+    ),
+  );
+
+  expect(tester.takeException(), isNull);
+  // Decimal comma and French grouping (narrow no-break space), explicit "+".
+  expect(
+    tester.widgetList<StatusPill>(find.byType(StatusPill)).map((StatusPill pill) => pill.label),
+    <String>["+0,05", "-0,05 · Worse", "=", "+3", "+1\u202F234,50"],
+  );
+  expect(find.bySemanticsLabel("Up: +0,05"), findsOneWidget);
+  expect(find.bySemanticsLabel("Down: -0,05, Worse"), findsOneWidget);
+  expect(find.bySemanticsLabel("Flat: ="), findsOneWidget);
+  handle.dispose();
+}
+
+Future<void> _captionTest(WidgetTester tester) async {
+  final SemanticsHandle handle = tester.ensureSemantics();
+  await pumpApp(
+    tester,
+    PreviewConfirmSheet(
+      title: "Item B",
+      stats: <PreviewStat>[
+        const PreviewStat(label: "A", value: "1", tone: StatusTone.success, caption: "Good"),
+        const PreviewStat(label: "B", value: "1", tone: StatusTone.danger, caption: "Bad"),
+        PreviewStat.delta(label: "C", delta: 0.05, higherIsBetter: false, caption: "Worse"),
+        const PreviewStat(label: "D", value: "2", tone: StatusTone.info, caption: "Info", semanticsLabel: "Custom D"),
+        const PreviewStat(label: "E", value: "3", caption: ""),
+      ],
+      onConfirm: _noop,
+    ),
+  );
+
+  // Visible: the same value with a different tone reads differently.
+  expect(find.text("1 · Good"), findsOneWidget);
+  expect(find.text("1 · Bad"), findsOneWidget);
+  expect(find.text("+0.05 · Worse"), findsOneWidget);
+  expect(find.text("2 · Info"), findsOneWidget);
+  expect(find.text("3"), findsOneWidget);
+  // Announced: the caption is appended unless semanticsLabel replaces it all.
+  expect(find.bySemanticsLabel("A: 1, Good"), findsOneWidget);
+  expect(find.bySemanticsLabel("B: 1, Bad"), findsOneWidget);
+  expect(find.bySemanticsLabel("C: +0.05, Worse"), findsOneWidget);
+  expect(find.bySemanticsLabel("Custom D"), findsOneWidget);
+  expect(find.bySemanticsLabel("E: 3"), findsOneWidget);
+  handle.dispose();
 }
 
 Future<void> _darkSmoke(WidgetTester tester) async {

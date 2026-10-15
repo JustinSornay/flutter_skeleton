@@ -4,9 +4,14 @@
 // ImageProvider, icon placeholder when absent or broken), a one-line title
 // and optional subtitle, a row of small labelled value columns with an
 // optional status-tone marker, and an optional trailing change badge
-// (StatusPill). Tappable when onTap is set. The column value class lives in
-// thumbnail_metric.dart, the tree in view.dart, the thumbnail in
-// widgets/thumbnail.dart and one column in widgets/metric_column.dart.
+// (StatusPill with the tone icon). The columns and badge scale down when they
+// would squeeze the title below 48 dp; measuring the width for that
+// (LayoutBuilder) rules out intrinsic-size parents. Tappable when onTap is
+// set. The column value class lives in thumbnail_metric.dart, the tree in
+// view.dart, the thumbnail in widgets/thumbnail.dart and one column in
+// widgets/metric_column.dart.
+
+import "dart:math" as math;
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
@@ -23,11 +28,13 @@ part "widgets/thumbnail.dart";
 /// such as a price now and before, a latency today and yesterday, or a
 /// candidate scored under two hypotheses.
 ///
-/// Layout (one row, needs a bounded width):
+/// Layout (one row; needs a bounded width and no intrinsic-size parent, see
+/// "Hosts" below):
 /// - Card: `cs.surfaceContainerLow` fill, 1 dp `cs.outlineVariant` border,
 ///   radius 16, 12 dp padding (`kDefaultPadding * 1.5`). The card is its own
 ///   [Material], so the ink of [onTap] shows and no Material ancestor is
-///   needed.
+///   needed; its theme-change animation goes through `resolveMotion`, so it
+///   is instant under reduced motion.
 /// - Thumbnail: 56 × 56, radius 8, [BoxFit.cover]. When [image] is null or
 ///   fails to load, [placeholderIcon] (24 dp, `cs.onSurfaceVariant`) on
 ///   `cs.surfaceContainerHighest` shows instead.
@@ -38,10 +45,16 @@ part "widgets/thumbnail.dart";
 ///   (9 / w700, letter spacing 0.5, `cs.onSurfaceVariant`) over the value
 ///   (12 / w800, `cs.onSurface`). A [ThumbnailMetric.tone] adds its
 ///   [StatusTone.icon] (12 dp, tone foreground) before the value, so the
-///   status never shows as colour alone. Columns keep their natural width:
-///   keep labels and values short.
-/// - [delta]: a dense [StatusPill] in [deltaTone] after the columns. Null or
-///   empty → no badge.
+///   status never shows as colour alone.
+/// - [delta]: a dense [StatusPill] in [deltaTone] after the columns, led by
+///   the [StatusTone.icon] of [deltaTone] (no icon for
+///   [StatusTone.neutral]), so a good or bad change is not shown by colour
+///   alone. Null or empty → no badge.
+/// - The columns and the badge keep their natural size while the title keeps
+///   at least 48 dp; past that (narrow width, large text scale) they scale
+///   down together instead of overflowing. Keep labels and values short and
+///   the columns few; under very large text scales, prefer fewer columns or
+///   a stacked layout in the host.
 ///
 /// The card formats and judges nothing. The host passes localised, formatted
 /// text, signs the change and hides it when it rounds to zero, and maps its
@@ -67,6 +80,15 @@ part "widgets/thumbnail.dart";
 /// The thumbnail is excluded. With [onTap] the node is a button with a tap
 /// action; the card is at least 80 dp tall, above the 48 dp target.
 ///
+/// Hosts: the trailing group measures the incoming width (`LayoutBuilder`),
+/// so the card cannot sit under an intrinsic-size parent: `IntrinsicWidth`,
+/// `IntrinsicHeight` (for instance to give side-by-side cards one height), a
+/// `Table` with `IntrinsicColumnWidth`, or the `content` of an `AlertDialog`,
+/// which measures it with `IntrinsicWidth`. Layout fails there (an error in
+/// debug builds). Give it a width-constrained host such as a list, a page,
+/// a sheet or `AppModal`, and give side-by-side cards a fixed height instead
+/// of `IntrinsicHeight`.
+///
 /// No tooltip, so no `Overlay` ancestor is needed.
 final class ThumbnailMetricCard extends StatelessWidget with _ViewMixin {
   /// Main line, already localised; one line with an ellipsis.
@@ -90,7 +112,8 @@ final class ThumbnailMetricCard extends StatelessWidget with _ViewMixin {
   final String? delta;
 
   /// Tone of the change badge (e.g. success when the change is good, danger
-  /// when it is bad).
+  /// when it is bad). Any tone but [StatusTone.neutral] also draws its
+  /// [StatusTone.icon] in the badge.
   final StatusTone deltaTone;
 
   /// Screen-reader label of the badge. Null or empty →

@@ -1,9 +1,9 @@
 // dimmed_preview.dart
 //
 // Private dimmed preview of FeatureGate (GateDisplayMode.dimmed): the real
-// child at 40 % opacity, non-interactive and hidden from screen readers,
-// with the lock badge in its top-right corner. When onUnlock is set the
-// whole area is one InkWell of at least 48 × 48 dp.
+// child at 40 % opacity, out of reach of pointer, keyboard focus and screen
+// readers, with the lock badge in its top-right corner. When onUnlock is set
+// the whole area is one InkWell of at least 48 × 48 dp.
 
 part of "../index.dart";
 
@@ -32,7 +32,8 @@ final class _DimmedPreview extends StatelessWidget {
       children: <Widget>[
         Opacity(
           opacity: _dimmedOpacity,
-          child: IgnorePointer(child: ExcludeSemantics(child: child)),
+          // Inert for pointer, screen readers and keyboard focus (Tab).
+          child: IgnorePointer(child: ExcludeSemantics(child: ExcludeFocus(child: child))),
         ),
         Positioned(
           top: kDefaultPadding / 2,

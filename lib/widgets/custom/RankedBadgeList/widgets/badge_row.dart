@@ -2,7 +2,8 @@
 //
 // _BadgeRow — one row of RankedBadgeList: the item's StatusPill ("label ·
 // value", one semantics node) and, when the host gives a trailingBuilder, an
-// 8 dp gap and the trailing widget. Both share the row width.
+// 8 dp gap and the trailing widget. Both share the row width. An item with
+// no text at all renders nothing.
 
 part of "../index.dart";
 
@@ -20,6 +21,8 @@ final class _BadgeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget Function(BuildContext context, RankedBadgeItem item)? builder = trailingBuilder;
+    final String text = _text();
+    if (text.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: kDefaultPadding),
@@ -27,7 +30,7 @@ final class _BadgeRow extends StatelessWidget {
         children: <Widget>[
           Flexible(
             child: StatusPill(
-              label: _text(),
+              label: text,
               tone: item.tone,
               semanticsLabel: _semanticsLabel(),
             ),
@@ -55,10 +58,12 @@ final class _BadgeRow extends StatelessWidget {
     return "${item.label}$_valueSeparator$value";
   }
 
-  /// Host label, else "label, value" (null lets StatusPill use the text).
+  /// Non-empty host label, else "label, value" (null lets StatusPill use the
+  /// text).
   String? _semanticsLabel() {
+    final String? host = item.semanticsLabel;
+    if (host != null && host.isNotEmpty) return host;
     final String? value = _value;
-    if (item.semanticsLabel != null) return item.semanticsLabel;
     if (value == null || item.label.isEmpty) return null;
     return "${item.label}, $value";
   }

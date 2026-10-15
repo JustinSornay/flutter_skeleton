@@ -27,7 +27,11 @@ final class RankedBadgeItem {
   /// of this item in [RankedBadgeList.trailingBuilder]). Not displayed.
   final String id;
 
-  /// Badge text, already localised (one line, ellipsised).
+  /// Badge text, already localised (one line, ellipsised). The badge reads
+  /// "label · value" as one line, so in a narrow row a long label can push
+  /// the value out of sight; the semantics label still carries both. When
+  /// [label] and [valueLabel] are both empty the item renders no row (and
+  /// no trailing widget).
   final String label;
 
   /// Ranking key: items are displayed by descending weight. Items with the
@@ -42,8 +46,9 @@ final class RankedBadgeItem {
   /// Tone of the badge, chosen by the host (no built-in threshold).
   final StatusTone tone;
 
-  /// Screen-reader label of the badge. Null → "[label], [valueLabel]" (or
-  /// [label] alone when there is no value).
+  /// Screen-reader label of the badge. Null or empty → "[label],
+  /// [valueLabel]" (or the badge text alone when [label] or [valueLabel] is
+  /// empty).
   final String? semanticsLabel;
 
   const RankedBadgeItem({
@@ -71,10 +76,10 @@ final class RankedBadgeItem {
 /// - Collapsed: only the first [collapsedCount] items are shown. When there
 ///   are more, a toggle (`labelMedium` w600, underlined, `cs.primary`, with
 ///   a chevron) reads `custom.ranked_badge_list.show_all` (total item count
-///   as `{count}`) or `custom.ranked_badge_list.show_less`; [showAllLabel] /
-///   [showLessLabel] override them. Expanding or collapsing animates the
-///   list height ([kMotionShort], `easeInOut`, instant under reduced
-///   motion).
+///   as `{count}`) or `custom.ranked_badge_list.show_less`; non-empty
+///   [showAllLabel] / [showLessLabel] override them. Expanding or collapsing
+///   animates the list height ([kMotionShort], `easeInOut`, instant under
+///   reduced motion).
 /// - Empty [items] render `SizedBox.shrink()`.
 ///
 /// Accessibility: one semantics node per badge
@@ -96,11 +101,11 @@ final class RankedBadgeList extends StatefulWidget {
   /// Null → badge only.
   final Widget Function(BuildContext context, RankedBadgeItem item)? trailingBuilder;
 
-  /// Toggle text while collapsed, already localised. Null →
-  /// `custom.ranked_badge_list.show_all` with the item count.
+  /// Toggle text while collapsed, already localised. Null or empty →
+  /// `custom.ranked_badge_list.show_all` with the total item count.
   final String? showAllLabel;
 
-  /// Toggle text while expanded, already localised. Null →
+  /// Toggle text while expanded, already localised. Null or empty →
   /// `custom.ranked_badge_list.show_less`.
   final String? showLessLabel;
 

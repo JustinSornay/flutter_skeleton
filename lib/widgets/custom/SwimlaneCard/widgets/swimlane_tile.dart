@@ -1,9 +1,9 @@
 // swimlane_tile.dart
 //
-// _SwimlaneTile — one tile of SwimlaneCard: an animated rounded box (accent
-// fill and outline when selected) around an InkWell holding the scaled-down
-// value, the caption and the optional StatusPill badge, exposed as a single
-// semantics node.
+// _SwimlaneTile — one tile of SwimlaneCard: an animated rounded box (opaque
+// accent-tinted fill and accent outline when selected) around an InkWell
+// holding the scaled-down value, the caption and the optional StatusPill
+// badge, exposed as a single semantics node.
 
 part of "../index.dart";
 
@@ -14,8 +14,11 @@ const double _tileRadius = 8;
 /// never shifts on selection).
 const double _outlineWidth = 1.5;
 
-/// Opacity of the accent fill of the selected tile.
-const double _selectedFillAlpha = 0.12;
+/// Opacity of the accent tint composited over `cs.surfaceContainer` for the
+/// selected tile. Kept low so the tone `foreground` value text stays at
+/// least 4.5:1 on the tinted fill (`ToneColors.foreground` only guarantees it
+/// on the untinted surfaces).
+const double _selectedFillAlpha = 0.08;
 
 /// Size of the headline value.
 const double _valueFontSize = 18;
@@ -44,6 +47,11 @@ final class _SwimlaneTile<T> extends StatelessWidget {
     final StatusTone? tone = item.tone;
     final Color accent = tone == null ? cs.primary : StatusTones.colorsOf(context, tone).foreground;
     final bool interactive = onTap != null;
+    // Opaque: the tint is composited over the tile's own surface, so the
+    // value contrast never depends on what lies under the tile.
+    final Color fill = selected
+        ? Color.alphaBlend(accent.withValues(alpha: _selectedFillAlpha), cs.surfaceContainer)
+        : cs.surfaceContainer;
 
     // The content is excluded (not the InkWell) so the node keeps its tap
     // action and focus, and reads only the composed label.
@@ -58,7 +66,7 @@ final class _SwimlaneTile<T> extends StatelessWidget {
         curve: Curves.easeOutCubic,
         width: width,
         decoration: BoxDecoration(
-          color: selected ? accent.withValues(alpha: _selectedFillAlpha) : cs.surfaceContainer,
+          color: fill,
           borderRadius: BorderRadius.circular(_tileRadius),
           border: Border.all(color: selected ? accent : Colors.transparent, width: _outlineWidth),
         ),

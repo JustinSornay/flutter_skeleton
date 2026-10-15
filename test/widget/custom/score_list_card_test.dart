@@ -4,16 +4,21 @@
 // skeleton (row count, pulse, reduced motion, loading label), loaded rows
 // (subtitle, caption, default and custom score labels, bar clamping, tone
 // colours in light and dark), empty and error states (custom texts, retry,
-// live region), row taps and semantics (score value with real strings), the
-// 48 dp row height, overflow-free long texts, the ValueKey reload contract and
-// dispose safety.
+// live region), row taps and semantics (score value with the shipped
+// strings), the 48 dp row height, bar tracks of equal width whatever the
+// labels and text scale, overflow-free long texts, the card's theme animation
+// under reduced motion, the ValueKey reload contract and dispose safety.
 
 import "dart:async";
+import "dart:convert";
+import "dart:io";
 
 import "package:easy_localization/easy_localization.dart" hide TextDirection;
 // ignore: implementation_imports
 import "package:easy_localization/src/localization.dart";
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
+import "package:flutter_skeleton/data/locales.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
@@ -85,15 +90,13 @@ Future<void> _pumpReducedMotion(WidgetTester tester, Widget card) async {
   );
 }
 
-/// Pumps [card] at half the text size and lets its load settle: the row
-/// content is then shorter than kMinTapTarget, so only the row's own minimum
-/// height keeps it at 48 dp.
-Future<void> _pumpSmallText(WidgetTester tester, Widget card) async {
+/// Pumps [card] at [scale] times the text size and lets its load settle.
+Future<void> _pumpTextScale(WidgetTester tester, Widget card, double scale) async {
   await pumpApp(
     tester,
     Builder(
       builder: (BuildContext context) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(0.5)),
+        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
         child: card,
       ),
     ),
@@ -101,29 +104,20 @@ Future<void> _pumpSmallText(WidgetTester tester, Widget card) async {
   await tester.pump();
 }
 
-/// In-memory translations matching the widget's i18n fragment, so the real
-/// strings can be checked before the fragment is merged into assets.
-final class _MemoryLoader extends AssetLoader {
-  const _MemoryLoader();
+/// Reads the shipped `assets/translations/<lang>.json`, so the expectations
+/// check the real strings. Synchronous I/O completes under the fake-async
+/// clock.
+final class _AssetFileLoader extends AssetLoader {
+  const _AssetFileLoader();
 
   @override
   Future<Map<String, dynamic>?> load(String path, Locale locale) async {
-    final bool fr = locale.languageCode == "fr";
-    return <String, dynamic>{
-      "custom": <String, dynamic>{
-        "score_list_card": <String, dynamic>{
-          "empty": fr ? "Aucun élément à afficher." : "Nothing to show.",
-          "load_error": fr ? "Impossible de charger la liste." : "Could not load the list.",
-          "retry": fr ? "Réessayer" : "Retry",
-          "loading": fr ? "Chargement" : "Loading",
-          "score_semantics": "score {value}",
-        },
-      },
-    };
+    final File file = File("$path/${locale.languageCode}.json");
+    return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
   }
 }
 
-/// Pumps [card] under EasyLocalization with the in-memory translations and
+/// Pumps [card] under EasyLocalization with the shipped translations and
 /// lets its load settle. The loaded translations live in a singleton that
 /// outlives the test; the tear-down empties it so every later `.tr()` returns
 /// the raw key again, whatever the test order.
@@ -134,11 +128,11 @@ Future<void> _pumpLocalized(WidgetTester tester, Locale locale, Widget card) asy
   await tester.pumpWidget(
     EasyLocalization(
       supportedLocales: const <Locale>[Locale("fr"), Locale("en")],
-      path: "memory",
+      path: AppLocales.path,
       fallbackLocale: const Locale("fr"),
       startLocale: locale,
       saveLocale: false,
-      assetLoader: const _MemoryLoader(),
+      assetLoader: const _AssetFileLoader(),
       child: Builder(
         builder: (BuildContext context) => MaterialApp(
           localizationsDelegates: context.localizationDelegates,
@@ -158,6 +152,15 @@ LinearProgressIndicator _bar(WidgetTester tester, String title) {
   return tester.widget<LinearProgressIndicator>(
     find.descendant(of: row, matching: find.byType(LinearProgressIndicator)),
   );
+}
+
+/// Laid-out width of every bar track, in row order.
+List<double> _trackWidths(WidgetTester tester) {
+  return find
+      .byType(LinearProgressIndicator)
+      .evaluate()
+      .map((Element bar) => (bar.renderObject! as RenderBox).size.width)
+      .toList();
 }
 
 Color? _fill(LinearProgressIndicator bar) => (bar.valueColor! as AlwaysStoppedAnimation<Color>).value;
@@ -289,10 +292,21 @@ void main() {
     });
 
     testWidgets("a non-finite score draws an empty bar and a dash", (WidgetTester tester) async {
-      await _pumpLoaded(tester, _card(load: _returns(<_Item>[const _Item("Unknown", double.nan)])));
+      await _pumpLoaded(
+        tester,
+        _card(
+          load: _returns(<_Item>[
+            const _Item("Unknown", double.nan),
+            const _Item("Above", double.infinity),
+            const _Item("Below", double.negativeInfinity),
+          ]),
+        ),
+      );
 
       expect(_bar(tester, "Unknown").value, 0.0);
-      expect(find.text("—"), findsOneWidget);
+      expect(_bar(tester, "Above").value, 0.0);
+      expect(_bar(tester, "Below").value, 0.0);
+      expect(find.text("—"), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
   });
@@ -504,11 +518,51 @@ void main() {
   group("layout", () {
     testWidgets("every row is at least kMinTapTarget tall, even with small text", (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      await _pumpSmallText(tester, _card(load: _returns(<_Item>[_alpha, _beta]), onItemTap: (_Item _) {}));
+      // At half the text size the row content is shorter than kMinTapTarget,
+      // so only the row's own minimum height keeps it at 48 dp.
+      await _pumpTextScale(tester, _card(load: _returns(<_Item>[_alpha, _beta]), onItemTap: (_Item _) {}), 0.5);
 
       expect(tester.getSize(find.bySemanticsLabel(RegExp("^Alpha"))).height, greaterThanOrEqualTo(kMinTapTarget));
       expect(tester.getSize(find.bySemanticsLabel(RegExp("^Beta"))).height, greaterThanOrEqualTo(kMinTapTarget));
       handle.dispose();
+    });
+
+    for (final double scale in <double>[1.0, 2.0]) {
+      testWidgets("every bar track has the same width at text scale $scale", (WidgetTester tester) async {
+        await _pumpTextScale(
+          tester,
+          _card(load: _returns(<_Item>[const _Item("Full", 1.0), const _Item("Tiny", 0.09)])),
+          scale,
+        );
+
+        expect(find.text("100"), findsOneWidget);
+        expect(find.text("9"), findsOneWidget);
+        final List<double> widths = _trackWidths(tester);
+        expect(widths, hasLength(2));
+        expect(widths.last, widths.first);
+        expect(tester.renderObject<RenderParagraph>(find.text("100")).didExceedMaxLines, isFalse);
+      });
+    }
+
+    testWidgets("custom labels of different widths keep the tracks aligned", (WidgetTester tester) async {
+      await _pumpLoaded(
+        tester,
+        _card(
+          load: _returns(<_Item>[const _Item("Ten", 1.0), const _Item("Nine", 0.9), const _Item("One", 0.1)]),
+          entryOf: (_Item item) => ScoreListEntry(
+            title: item.name,
+            score: item.value,
+            scoreLabel: "${(item.value * 10).round()}/10",
+          ),
+        ),
+      );
+
+      final List<double> widths = _trackWidths(tester);
+      expect(widths, hasLength(3));
+      expect(widths.toSet(), hasLength(1));
+      // The slot fits the widest label, so it is not ellipsised.
+      expect(tester.renderObject<RenderParagraph>(find.text("10/10")).didExceedMaxLines, isFalse);
+      expect(tester.getSize(find.text("10/10")).width, greaterThan(kDefaultPadding * 4));
     });
 
     testWidgets("long texts ellipsise or wrap without overflow", (WidgetTester tester) async {
@@ -541,6 +595,20 @@ void main() {
       // The caption wraps instead of overflowing.
       expect(tester.widget<Text>(find.text(long).last).maxLines, isNull);
       expect(tester.getSize(find.text(long).last).height, greaterThan(tester.getSize(find.text(long).first).height));
+    });
+  });
+
+  group("motion", () {
+    testWidgets("the card's theme animation follows resolveMotion", (WidgetTester tester) async {
+      Material card() => tester.widget<Material>(
+            find.descendant(of: find.byType(ScoreListCard<_Item>), matching: find.byType(Material)).first,
+          );
+
+      await _pumpLoaded(tester, _card(load: _returns(<_Item>[_alpha])));
+      expect(card().animationDuration, kThemeChangeDuration);
+
+      await _pumpReducedMotion(tester, _card(load: _returns(<_Item>[_alpha])));
+      expect(card().animationDuration, Duration.zero);
     });
   });
 

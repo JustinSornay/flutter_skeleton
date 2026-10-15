@@ -26,8 +26,8 @@ final class _SlotHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: kDefaultPadding / 2),
       child: Row(
         children: <Widget>[
-          _badge(context, _Slot.a, "custom.comparison_picker.slot_a".tr()),
-          _badge(context, _Slot.b, "custom.comparison_picker.slot_b".tr()),
+          _badge(context, _Slot.a),
+          _badge(context, _Slot.b),
           if (label != null && label.isNotEmpty) ...<Widget>[
             const SizedBox(width: kDefaultPadding),
             Expanded(
@@ -47,7 +47,7 @@ final class _SlotHeader extends StatelessWidget {
     );
   }
 
-  Widget _badge(BuildContext context, _Slot slot, String letter) {
+  Widget _badge(BuildContext context, _Slot slot) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     return SizedBox(
@@ -59,7 +59,7 @@ final class _SlotHeader extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(color: _slotColor(cs, slot), borderRadius: BorderRadius.circular(_badgeRadius)),
           child: Text(
-            letter,
+            _slotLetter(slot),
             maxLines: 1,
             softWrap: false,
             overflow: TextOverflow.clip,

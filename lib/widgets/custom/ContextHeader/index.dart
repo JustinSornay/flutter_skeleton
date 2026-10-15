@@ -6,6 +6,8 @@
 // lookup and passes its result in. The tree lives in view.dart; the loading
 // placeholder composes SkeletonPulse + SkeletonBlock.
 
+import "dart:math" as math;
+
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
@@ -21,9 +23,9 @@ part "view.dart";
 /// Layout (start to end): [icon] (22 dp, `cs.primary`), then a column with
 /// the [title] (18 sp w700, `cs.onSurface`, one line, ellipsis) and the
 /// [subtitle] (13 sp w400, `cs.onSurfaceVariant`), then the optional change
-/// link (12 sp w700, 0.3 tracking, `cs.primary`). A full-width [Divider]
-/// (theme colour) closes the header. The header takes its content height,
-/// even in a bounded parent.
+/// link (12 sp w700, 0.3 tracking, `cs.primary`), its label level with the
+/// first text line. A full-width [Divider] (theme colour) closes the header.
+/// The header takes its content height, even in a bounded parent.
 ///
 /// [title] states:
 /// - null: still resolving — a pulsing `SkeletonBlock(width: 120, height: 14)`
@@ -36,7 +38,13 @@ part "view.dart";
 ///
 /// The link is rendered only when [onChange] is set. Its hit area is at least
 /// [kMinTapTarget] (48 × 48) and it is one button semantics node labelled
-/// [changeSemanticsLabel] (falls back to the visible label).
+/// [changeSemanticsLabel] (falls back to the full visible label). It takes its
+/// natural width up to 40 % of the row; a longer label (or a large text
+/// scale) ends it with an ellipsis, so the title column always keeps the rest.
+/// To cap the link the header reads its width (`LayoutBuilder`), so a header
+/// *with a link* cannot sit under an intrinsic-size parent (`IntrinsicWidth`,
+/// `IntrinsicHeight`, or the `content` of an `AlertDialog`); without a link
+/// it can.
 ///
 /// The widget never navigates: [onChange] does. The link carries its own
 /// transparent `Material`, so neither a `Material` nor an `Overlay` ancestor
@@ -57,13 +65,13 @@ final class ContextHeader extends StatelessWidget with _ViewMixin {
   /// Called when the trailing link is tapped. null hides the link.
   final VoidCallback? onChange;
 
-  /// Visible link text, kept short (one or two words): the link takes its
-  /// natural width and the title column gets the rest. null shows the
-  /// built-in `"custom.context_header.change"` label.
+  /// Visible link text, best kept short (one or two words). It takes its
+  /// natural width up to 40 % of the row, then ends with an ellipsis. null
+  /// shows the built-in `"custom.context_header.change"` label.
   final String? changeLabel;
 
   /// Screen-reader label for the link (e.g. "Change the location"). Falls
-  /// back to the visible label.
+  /// back to the full visible label (never the ellipsised one).
   final String? changeSemanticsLabel;
 
   const ContextHeader({

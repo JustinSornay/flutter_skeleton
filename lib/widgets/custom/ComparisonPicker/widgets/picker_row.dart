@@ -2,9 +2,10 @@
 //
 // One ComparisonPicker row: its own Material (slot-tinted fill and border),
 // the leading slot control, the label / subtitle texts and the optional value
-// (plain text or StatusTones pill with a labelled tone icon, capped at half
-// the text width). A locked-A secondary row is also one tappable toggle node
-// for slot B.
+// (plain text or a StatusTones pill led by the tone icon, capped at half the
+// text width; or a tone-label pill followed by the plain value, capped at
+// 70 % of it, the pill taking what the value leaves). A locked-A secondary
+// row is also one tappable toggle node for slot B.
 
 part of "../index.dart";
 
@@ -18,15 +19,30 @@ const double _rowGap = kDefaultPadding / 2;
 const double _selectedBorderWidth = 1;
 const double _idleBorderWidth = 0.5;
 
-/// Minimum width of a plain value, so values line up in a column.
+/// Minimum width of a lone plain value, so values line up in a column.
 const double _valueMinWidth = kDefaultPadding * 5;
 
-/// Largest share of the text width a value may take; longer values end with
-/// an ellipsis.
+/// Largest share of the text width a lone value (plain text or pill) may
+/// take; longer values end with an ellipsis.
 const double _valueMaxWidthFactor = 0.5;
+
+/// Largest share of the text width a tone pill followed by a plain value may
+/// take together; the label keeps the rest.
+const double _pairMaxWidthFactor = 0.7;
+
+/// Largest share of the text width the plain value after a pill may take
+/// (it takes its natural width up to that); the pill gets what it leaves.
+const double _pairValueMaxWidthFactor = 0.25;
 
 /// Size of the tone icon in a value pill.
 const double _toneIconSize = 12;
+
+/// Gap between the tone pill and the plain value that follows it.
+const double _pillValueGap = kDefaultPadding / 2;
+
+/// [text], or null when it is null or empty, so an empty string is treated
+/// as a missing one.
+String? _nonEmpty(String? text) => (text == null || text.isEmpty) ? null : text;
 
 /// Whole-row toggle of a locked-A secondary row.
 final class _RowToggle {
@@ -95,9 +111,11 @@ final class _PickerRow extends StatelessWidget {
   }
 
   Widget _body(BuildContext context, Color foreground) {
-    final String? valueLabel = item.valueLabel;
+    final String? valueLabel = _nonEmpty(item.valueLabel);
+    final String? toneLabel = _nonEmpty(item.toneLabel);
     final StatusTone? tone = item.tone;
-    final bool hasValue = (valueLabel != null && valueLabel.isNotEmpty) || tone != null;
+    // A tone is drawn only with a text to pair it with.
+    final bool hasValue = valueLabel != null || (tone != null && toneLabel != null);
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: kMinTapTarget),
@@ -115,14 +133,12 @@ final class _PickerRow extends StatelessWidget {
                       Expanded(child: _texts(context, foreground)),
                       if (hasValue) ...<Widget>[
                         const SizedBox(width: kDefaultPadding),
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: constraints.maxWidth * _valueMaxWidthFactor),
-                          child: _RowValue(
-                            valueLabel: valueLabel,
-                            tone: tone,
-                            toneLabel: item.toneLabel,
-                            color: foreground,
-                          ),
+                        _RowValue(
+                          valueLabel: valueLabel,
+                          tone: tone,
+                          toneLabel: toneLabel,
+                          color: foreground,
+                          areaWidth: constraints.maxWidth,
                         ),
                       ],
                     ],
@@ -163,74 +179,117 @@ final class _PickerRow extends StatelessWidget {
   }
 }
 
-/// End-of-row value: a StatusTones pill (tone icon + text) when [tone] is
-/// set, plain bold text in [color] otherwise. Single line, ellipsised to the
-/// width its parent allows.
+/// End-of-row value on single ellipsised lines, sized from [areaWidth], the
+/// text width it shares with the label:
+/// - no [tone]: [valueLabel] as plain bold text in [color], at most half of
+///   [areaWidth];
+/// - a [tone] and one text: a StatusTones pill led by the tone icon, holding
+///   [toneLabel] (else [valueLabel]), at most half of [areaWidth];
+/// - a [tone] and both texts: the [toneLabel] pill, then [valueLabel] as
+///   plain text at its natural width, at most a quarter of [areaWidth]; the
+///   pill takes what the value leaves of 70 % of [areaWidth].
+///
+/// Reading order: tone label, then value; the icon is decorative.
 final class _RowValue extends StatelessWidget {
+  /// Non-empty or null.
   final String? valueLabel;
 
   final StatusTone? tone;
 
-  /// Name of [tone]: the icon's semantics label when there is a
-  /// [valueLabel], or the pill text when there is none.
+  /// Non-empty or null. Ignored without [tone].
   final String? toneLabel;
 
   /// Text colour of a plain value.
   final Color color;
 
-  const _RowValue({required this.valueLabel, required this.tone, required this.toneLabel, required this.color});
+  /// Width of the text area the value shares with the label.
+  final double areaWidth;
+
+  const _RowValue({
+    required this.valueLabel,
+    required this.tone,
+    required this.toneLabel,
+    required this.color,
+    required this.areaWidth,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final StatusTone? tone = this.tone;
-    final String? valueLabel = this.valueLabel;
-    final bool hasValueText = valueLabel != null && valueLabel.isNotEmpty;
     final TextStyle? style = Theme.of(
       context,
     ).textTheme.labelSmall?.copyWith(fontSize: 11, fontWeight: FontWeight.w800);
-
+    final StatusTone? tone = this.tone;
+    final String? valueLabel = this.valueLabel;
+    final String? toneLabel = this.toneLabel;
     if (tone == null) {
-      return ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: _valueMinWidth),
-        child: Text(
-          valueLabel ?? "",
-          textAlign: TextAlign.end,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: style?.copyWith(color: color),
-        ),
-      );
+      return _capped(_valueMaxWidthFactor, _plain(valueLabel ?? "", style, minWidth: _valueMinWidth));
     }
+    if (toneLabel == null || valueLabel == null) {
+      return _capped(_valueMaxWidthFactor, _pill(context, tone, toneLabel ?? valueLabel ?? "", style));
+    }
+    return _capped(
+      _pairMaxWidthFactor,
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          // A Flexible is laid out after its siblings: the pill gets
+          // everything the capped value leaves.
+          Flexible(child: _pill(context, tone, toneLabel, style)),
+          const SizedBox(width: _pillValueGap),
+          _capped(_pairValueMaxWidthFactor, _plain(valueLabel, style)),
+        ],
+      ),
+    );
+  }
 
-    // The visible text is the value, else the tone name; the icon speaks the
-    // tone name only when the text does not already say it.
-    final String text = hasValueText ? valueLabel : (toneLabel ?? "");
+  /// [child], at most [factor] × [areaWidth] wide.
+  Widget _capped(double factor, Widget child) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: areaWidth * factor),
+      child: child,
+    );
+  }
+
+  /// Plain bold value, right-aligned, at least [minWidth] wide (so lone
+  /// values line up in a column).
+  Widget _plain(String text, TextStyle? style, {double minWidth = 0}) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: minWidth),
+      child: Text(
+        text,
+        textAlign: TextAlign.end,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style?.copyWith(color: color),
+      ),
+    );
+  }
+
+  /// StatusTones pill: the decorative tone icon, then [text], drawn as one
+  /// ellipsised line (the icon is a placeholder in the span), so a squeezed
+  /// pill cuts its text instead of overflowing.
+  Widget _pill(BuildContext context, StatusTone tone, String text, TextStyle? style) {
     final ToneColors colors = StatusTones.colorsOf(context, tone);
     return DecoratedBox(
       decoration: BoxDecoration(color: colors.container, borderRadius: BorderRadius.circular(999)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: kDefaultPadding / 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              tone.icon,
-              size: _toneIconSize,
-              color: colors.onContainer,
-              semanticLabel: hasValueText ? toneLabel : null,
-            ),
-            if (text.isNotEmpty) ...<Widget>[
-              const SizedBox(width: kDefaultPadding / 2),
-              Flexible(
-                child: Text(
-                  text,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style?.copyWith(color: colors.onContainer),
+        child: Text.rich(
+          TextSpan(
+            children: <InlineSpan>[
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: kDefaultPadding / 2),
+                  child: Icon(tone.icon, size: _toneIconSize, color: colors.onContainer),
                 ),
               ),
+              TextSpan(text: text),
             ],
-          ],
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style?.copyWith(color: colors.onContainer),
         ),
       ),
     );

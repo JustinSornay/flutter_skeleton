@@ -49,21 +49,27 @@ typedef ComparisonSlotsChanged = void Function(String? slotA, String? slotB);
 ///
 /// Rows (radius 8, at least [kMinTapTarget] tall) render the
 /// [ComparisonPickerItem] fields: `label` (bold), `subtitle` (muted second
-/// line), and `valueLabel` at the end, drawn in a `StatusTones` pill with the
-/// tone icon when `tone` is set (`toneLabel` names the tone for screen
-/// readers, or is the pill text when there is no `valueLabel`), or as plain
-/// bold text otherwise. The value takes at most half of the text width and
-/// ends with an ellipsis when longer. The row
-/// holding slot A is filled with `cs.primaryContainer` and bordered
-/// `cs.primary`; slot B uses `cs.tertiaryContainer` / `cs.tertiary`; the
-/// others use `cs.surface` / `cs.outlineVariant`.
+/// line), then the value at the end. With a `tone`, a `StatusTones` pill led
+/// by the tone icon holds `toneLabel` (else `valueLabel`), and `valueLabel`
+/// follows the pill as plain bold text when both are set; without a tone,
+/// `valueLabel` is plain bold text. A lone value (plain text or pill) takes
+/// at most half of the text width. A pill followed by a value takes at most
+/// 70 % of it: the value its natural width up to a quarter, the pill the
+/// rest. Longer texts end with an ellipsis. The row holding slot A is
+/// filled with `cs.primaryContainer` and bordered `cs.primary`; slot B uses
+/// `cs.tertiaryContainer` / `cs.tertiary`; the others use `cs.surface` /
+/// `cs.outlineVariant`. A filled slot dot (selected radio or locked-A dot)
+/// shows its slot letter, so a slot is never told by colour alone.
 ///
 /// Two modes, chosen from the length of [primary]:
 /// - **Locked A** (exactly one primary item): slot A is that item (unless
 ///   [initialSlotA] names another one). The primary row cannot be tapped;
-///   its slot-A dot is filled while it holds slot A and an empty ring
-///   otherwise. Tapping a whole secondary row toggles slot B; tapping the
-///   row holding slot A moves slot A to slot B, leaving slot A empty.
+///   its dot is filled with "A" while it holds slot A, filled with "B" when
+///   it holds slot B (e.g. via [initialSlotB]) and an empty ring otherwise.
+///   Tapping a whole secondary row toggles slot B; its dot is filled with
+///   "B" while it holds slot B, or with "A" while it holds slot A (e.g. via
+///   [initialSlotA]). Tapping the row holding slot A moves slot A to slot
+///   B, leaving slot A empty.
 /// - **Radio** (0 or 2+ primary items): every row has an A radio and a B
 ///   radio, each with a 48 × 48 hit area. Tapping a selected radio empties
 ///   the slot; the radio of the other slot on a row that already holds one
@@ -81,18 +87,25 @@ typedef ComparisonSlotsChanged = void Function(String? slotA, String? slotB);
 /// `custom.comparison_picker.select_a` / `select_b` ("Select {label} as A");
 /// a locked-A secondary row is one such node labelled `select_b`; the
 /// locked slot-A dot reads `custom.comparison_picker.locked_a` while the
-/// primary row holds slot A; each row's texts, value and `toneLabel` merge
-/// into one node; the add button is a button node; the loading rows read
-/// `custom.comparison_picker.loading` (a generic "Loading").
+/// primary row holds slot A; a locked-A row holding the slot it cannot
+/// toggle (a secondary row in slot A, the primary row in slot B) gets a
+/// checked, disabled `select_a` / `select_b` node on its dot; each row's
+/// texts, `toneLabel` and value merge into one node; the add button is a
+/// button node; the loading rows read `custom.comparison_picker.loading` (a
+/// generic "Loading").
 ///
 /// Built-in strings: `custom.comparison_picker.slot_a` / `slot_b` (header
-/// badges), `secondary` and `add` (defaults of [secondaryLabel] and
-/// [addLabel]), plus the semantics labels above.
+/// badges and filled dots), `secondary` and `add` (defaults of
+/// [secondaryLabel] and [addLabel]), plus the semantics labels above.
 ///
 /// The widget never navigates: [onChanged] and [onAdd] do. Each row and the
 /// add button carry their own [Material], so no `Material` ancestor is
 /// needed, and no `Overlay` ancestor is needed either (no tooltip). It sizes
-/// to its content: the host scrolls it.
+/// to its content: the host scrolls it. Rows and the divider split their
+/// incoming width (`LayoutBuilder`), so the picker cannot sit under an
+/// intrinsic-size parent (`IntrinsicWidth`, `IntrinsicHeight`, or the
+/// `content` of an `AlertDialog`, which measures it with `IntrinsicWidth`):
+/// give it a width-constrained host such as a page, a sheet or `AppModal`.
 final class ComparisonPicker extends StatefulWidget {
   /// Items listed first. Exactly one item switches to locked-A mode.
   final List<ComparisonPickerItem> primary;

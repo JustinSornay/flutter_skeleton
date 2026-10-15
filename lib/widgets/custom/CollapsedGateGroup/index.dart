@@ -45,7 +45,7 @@ final class GatedFeatureEntry {
 ///
 /// Header (at least [kMinTapTarget] tall, one button semantics node with an
 /// expanded state and the `custom.collapsed_gate_group.expand` / `.collapse`
-/// tap hint): a 16 dp lock icon, [summary] (`bodyMedium` w600,
+/// hint): a 16 dp lock icon, [summary] (`bodyMedium` w600,
 /// `cs.onSurfaceVariant`) and a chevron. Tapping it toggles the list.
 ///
 /// Expanded content, cross-faded in under a `cs.outlineVariant` divider:

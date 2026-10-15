@@ -4,15 +4,19 @@
 // detail, optional active badge (PillBadge), optional score (dense
 // StatusPill in the entry's tone) and optional decorative trailing icon
 // circle. A single button semantics node, selected when active. At least
-// kMinTapTarget tall.
+// kMinTapTarget tall; the rank circle grows with the text scale.
 
 part of "../index.dart";
 
 /// Corner radius of a row.
 const double _rowRadius = 10;
 
-/// Diameter of the rank circle (22 dp).
+/// Diameter of the rank circle at the default text scale (22 dp); also its
+/// minimum.
 const double _rankSize = kDefaultPadding * 2.75;
+
+/// Size of the rank when the theme's labelSmall has none (11 sp).
+const double _rankFontSize = 11;
 
 /// Diameter of the trailing icon circle (26 dp).
 const double _trailingSize = kDefaultPadding * 3.25;
@@ -98,11 +102,20 @@ final class _RankedListRow<T> extends StatelessWidget {
     );
   }
 
+  /// The circle grows by the same factor as the rank's font under the text
+  /// scaler (never below 22 dp), so the rank scales with the rest of the row;
+  /// the FittedBox only shrinks ranks too wide for the circle (3+ digits).
   Widget _rankCircle(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final TextStyle style = (theme.textTheme.labelSmall ?? const TextStyle(fontSize: _rankFontSize)).copyWith(
+      fontWeight: FontWeight.w800,
+      color: active ? cs.onTertiary : cs.onTertiaryContainer,
+    );
+    final double fontSize = style.fontSize ?? _rankFontSize;
+    final double fontScale = MediaQuery.textScalerOf(context).scale(fontSize) / fontSize;
     return SizedBox.square(
-      dimension: _rankSize,
+      dimension: math.max(_rankSize, _rankSize * fontScale),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: active ? cs.tertiary : cs.tertiaryContainer,
@@ -113,14 +126,7 @@ final class _RankedListRow<T> extends StatelessWidget {
           child: Center(
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                "$rank",
-                maxLines: 1,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: active ? cs.onTertiary : cs.onTertiaryContainer,
-                ),
-              ),
+              child: Text("$rank", maxLines: 1, style: style),
             ),
           ),
         ),

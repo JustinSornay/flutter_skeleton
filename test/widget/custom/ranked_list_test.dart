@@ -2,16 +2,18 @@
 //
 // Widget tests for RankedList: empty state (default and custom text, no
 // header, no list), header (title + count, trailing slot, hidden), rows
-// (order, explicit rank, detail, score pill and tone, trailing icon, taps),
-// the active row (fill, border, badge, selected semantics), layout (height
-// cap, shrink-wrap, scrolling, a single scrollbar on desktop, 48 dp rows,
-// long texts), semantics labels (raw keys and real strings in English and
-// French), the dark theme and dispose safety.
+// (order, explicit rank, three-digit rank, rank growing with the text scale,
+// detail, score pill and tone, trailing icon, taps), the active row (fill,
+// border, rank, detail and trailing colours, badge, selected semantics),
+// layout (height cap, shrink-wrap, scrolling, a single scrollbar on desktop,
+// 48 dp rows, long texts), semantics labels (raw keys and real strings in
+// English and French), the dark theme and scroll controller disposal.
 
 import "package:easy_localization/easy_localization.dart" hide TextDirection;
 // ignore: implementation_imports
 import "package:easy_localization/src/localization.dart";
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
@@ -133,451 +135,503 @@ ColorScheme _scheme(WidgetTester tester) => Theme.of(tester.element(find.byType(
 
 BuildContext _context(WidgetTester tester) => tester.element(find.byType(RankedList<String>));
 
+/// [child] under the ambient MediaQuery with a linear text scale of [factor].
+Widget _textScaled(double factor, Widget child) {
+  return Builder(
+    builder: (BuildContext context) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(factor)),
+      child: child,
+    ),
+  );
+}
+
 void main() {
-  group("empty", () {
-    testWidgets("shows the default message, without header or list", (WidgetTester tester) async {
-      await pumpApp(tester, _list(entries: const <RankedListEntry<String>>[], headerTrailing: const Text("slot")));
+  group("empty", _emptyTests);
+  group("header", _headerTests);
+  group("rows", _rowTests);
+  group("active row", _activeRowTests);
+  group("layout", _layoutTests);
+  group("semantics", _semanticsTests);
+  group("theme", _themeTests);
+}
 
-      expect(find.text(_emptyKey), findsOneWidget);
-      expect(find.byType(ListView), findsNothing);
-      expect(find.text(_title), findsNothing);
-      expect(find.text("slot"), findsNothing);
-    });
+void _emptyTests() {
+  testWidgets("shows the default message, without header or list", (WidgetTester tester) async {
+    await pumpApp(tester, _list(entries: const <RankedListEntry<String>>[], headerTrailing: const Text("slot")));
 
-    testWidgets("shows a custom message", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        const RankedList<String>(entries: <RankedListEntry<String>>[], onItemTap: _ignore, emptyLabel: "Nothing yet"),
-      );
-
-      expect(find.text("Nothing yet"), findsOneWidget);
-      expect(find.text(_emptyKey), findsNothing);
-    });
+    expect(find.text(_emptyKey), findsOneWidget);
+    expect(find.byType(ListView), findsNothing);
+    expect(find.text(_title), findsNothing);
+    expect(find.text("slot"), findsNothing);
   });
 
-  group("header", () {
-    testWidgets("renders the title as a semantic header followed by the count", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(tester, _list());
-
-      expect(find.text(_title), findsOneWidget);
-      expect(find.text(_countKey), findsOneWidget);
-      expect(tester.getTopLeft(find.text(_countKey)).dx, greaterThan(tester.getTopLeft(find.text(_title)).dx));
-      expect(tester.getSemantics(find.text(_title)), isSemantics(label: _title, isHeader: true));
-      handle.dispose();
-    });
-
-    testWidgets("renders the trailing slot at the right end", (WidgetTester tester) async {
-      await pumpApp(tester, _list(headerTrailing: const Text("slot")));
-
-      expect(find.text("slot"), findsOneWidget);
-      expect(tester.getTopRight(find.text("slot")).dx, greaterThan(tester.getTopRight(find.text(_countKey)).dx));
-    });
-
-    testWidgets("shows the trailing slot without title or count", (WidgetTester tester) async {
-      await pumpApp(tester, _list(title: null, headerTrailing: const Text("slot")));
-
-      expect(find.text("slot"), findsOneWidget);
-      expect(find.text(_countKey), findsNothing);
-    });
-
-    testWidgets("is absent without title and trailing slot", (WidgetTester tester) async {
-      await pumpApp(tester, _list(title: null));
-
-      expect(find.text(_countKey), findsNothing);
-      expect(find.text("Alpha"), findsOneWidget);
-    });
-
-    // Real strings: without EasyLocalization the count shows its raw key,
-    // which is far longer than the real "(n)".
-    testWidgets("keeps a long title on one line without overflow", (WidgetTester tester) async {
-      await _pumpLocalized(
-        tester,
-        const Locale("en"),
-        SizedBox(width: 240, child: _list(title: "A VERY LONG HEADER TITLE " * 6, headerTrailing: const Text("slot"))),
-      );
-
-      expect(tester.takeException(), isNull);
-      expect(find.text("slot"), findsOneWidget);
-      expect(find.text("(3)"), findsOneWidget);
-    });
-  });
-
-  group("rows", () {
-    testWidgets("renders ranks and labels in the given order", (WidgetTester tester) async {
-      await pumpApp(tester, _list());
-
-      for (final String rank in <String>["1", "2", "3"]) {
-        expect(find.text(rank), findsOneWidget);
-      }
-      final double alpha = tester.getTopLeft(find.text("Alpha")).dy;
-      final double beta = tester.getTopLeft(find.text("Beta")).dy;
-      final double gamma = tester.getTopLeft(find.text("Gamma")).dy;
-      expect(alpha, lessThan(beta));
-      expect(beta, lessThan(gamma));
-      expect(tester.getCenter(find.text("1")).dy, closeTo(tester.getCenter(find.text("Alpha")).dy, 1));
-    });
-
-    testWidgets("uses the entry's own rank when set", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        _list(
-          entries: const <RankedListEntry<String>>[
-            RankedListEntry<String>(value: "x", label: "Tenth", rank: 10),
-            RankedListEntry<String>(value: "y", label: "Second"),
-          ],
-        ),
-      );
-
-      expect(find.text("10"), findsOneWidget);
-      expect(find.text("2"), findsOneWidget);
-      expect(find.text("1"), findsNothing);
-    });
-
-    testWidgets("fits a three-digit rank inside the circle", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        _list(entries: const <RankedListEntry<String>>[RankedListEntry<String>(value: "x", label: "Far", rank: 128)]),
-      );
-
-      expect(tester.takeException(), isNull);
-      final Rect circle = tester.getRect(
-        find.ancestor(of: find.text("128"), matching: find.byType(DecoratedBox)).first,
-      );
-      final Rect text = tester.getRect(find.text("128"));
-      expect(circle.contains(text.topLeft) && circle.contains(text.bottomRight - const Offset(0.1, 0.1)), isTrue);
-    });
-
-    testWidgets("shows the detail line only when set", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        _list(
-          entries: const <RankedListEntry<String>>[
-            RankedListEntry<String>(value: "a", label: "Alpha", detail: "More"),
-            RankedListEntry<String>(value: "b", label: "Beta", detail: ""),
-          ],
-        ),
-      );
-
-      expect(find.text("More"), findsOneWidget);
-      expect(tester.getTopLeft(find.text("More")).dy, greaterThan(tester.getTopLeft(find.text("Alpha")).dy));
-      expect(find.text(""), findsNothing);
-    });
-
-    testWidgets("shows the score as a percentage pill in the entry tone", (WidgetTester tester) async {
-      await pumpApp(tester, _list());
-
-      final StatusPill alpha = tester.widget<StatusPill>(find.widgetWithText(StatusPill, "85%"));
-      expect(alpha.tone, StatusTone.success);
-      expect(alpha.dense, isTrue);
-      expect(tester.widget<StatusPill>(find.widgetWithText(StatusPill, "62%")).tone, StatusTone.warning);
-      expect(find.byType(StatusPill), findsNWidgets(2));
-
-      final BuildContext context = _context(tester);
-      expect(
-        tester.widget<Text>(find.text("85%")).style?.color,
-        StatusTones.colorsOf(context, StatusTone.success).onContainer,
-      );
-      expect(
-        tester.widget<Text>(find.text("62%")).style?.color,
-        StatusTones.colorsOf(context, StatusTone.warning).onContainer,
-      );
-    });
-
-    testWidgets("hides the score when it is null or not finite", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        _list(
-          entries: const <RankedListEntry<String>>[
-            RankedListEntry<String>(value: "a", label: "Alpha"),
-            RankedListEntry<String>(value: "b", label: "Beta", score: double.nan),
-            RankedListEntry<String>(value: "c", label: "Gamma", score: double.infinity),
-          ],
-        ),
-      );
-
-      expect(find.byType(StatusPill), findsNothing);
-    });
-
-    testWidgets("draws the default trailing icon on every row", (WidgetTester tester) async {
-      await pumpApp(tester, _list());
-
-      expect(find.byIcon(Icons.swap_horiz), findsNWidgets(3));
-    });
-
-    testWidgets("draws a custom trailing icon, or none", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        const RankedList<String>(entries: _three, onItemTap: _ignore, trailingIcon: Icons.chevron_right),
-      );
-      expect(find.byIcon(Icons.chevron_right), findsNWidgets(3));
-      expect(find.byIcon(Icons.swap_horiz), findsNothing);
-
-      await pumpApp(tester, const RankedList<String>(entries: _three, onItemTap: _ignore, trailingIcon: null));
-      expect(find.byIcon(Icons.chevron_right), findsNothing);
-      expect(find.byType(Icon), findsNothing);
-    });
-
-    testWidgets("calls onItemTap with the tapped row's value", (WidgetTester tester) async {
-      final List<String> taps = <String>[];
-      await pumpApp(tester, _list(onItemTap: taps.add));
-
-      await tester.tap(find.text("Beta"));
-      await tester.tap(find.byIcon(Icons.swap_horiz).last);
-      await tester.tap(find.text("85%"));
-      await tester.pump();
-
-      expect(taps, <String>["b", "c", "a"]);
-    });
-
-    testWidgets("uses the inactive row colours", (WidgetTester tester) async {
-      await pumpApp(tester, _list());
-
-      final ColorScheme cs = _scheme(tester);
-      expect(_rowMaterial(tester, "Alpha").color, cs.surfaceContainerLow);
-      expect(_rowSide(tester, "Alpha").color, cs.outlineVariant);
-      expect(tester.widget<Text>(find.text("Alpha")).style?.color, cs.onSurface);
-      expect(tester.widget<Text>(find.text("1")).style?.color, cs.onTertiaryContainer);
-    });
-  });
-
-  group("active row", () {
-    testWidgets("highlights only the matching row with the tertiary accent", (WidgetTester tester) async {
-      await pumpApp(tester, _list(activeValue: "b", activeBadgeLabel: _badge));
-
-      final ColorScheme cs = _scheme(tester);
-      expect(_rowMaterial(tester, "Beta").color, cs.tertiaryContainer);
-      expect(_rowSide(tester, "Beta").color, cs.tertiary);
-      expect(tester.widget<Text>(find.text("Beta")).style?.color, cs.onTertiaryContainer);
-      expect(tester.widget<Text>(find.text("2")).style?.color, cs.onTertiary);
-      expect(_rowMaterial(tester, "Alpha").color, cs.surfaceContainerLow);
-      expect(_rowSide(tester, "Gamma").color, cs.outlineVariant);
-    });
-
-    testWidgets("shows the badge inside the active row only", (WidgetTester tester) async {
-      await pumpApp(tester, _list(activeValue: "a", activeBadgeLabel: _badge));
-
-      expect(find.text(_badge), findsOneWidget);
-      final Finder activeRow = find.ancestor(of: find.text("Alpha"), matching: find.byType(Material)).first;
-      expect(find.descendant(of: activeRow, matching: find.text(_badge)), findsOneWidget);
-      expect(tester.widget<Text>(find.text(_badge)).style?.color, _scheme(tester).tertiary);
-    });
-
-    testWidgets("shows no badge when the label is null or empty", (WidgetTester tester) async {
-      await pumpApp(tester, _list(activeValue: "a"));
-      expect(find.text(_badge), findsNothing);
-      expect(_rowMaterial(tester, "Alpha").color, _scheme(tester).tertiaryContainer);
-
-      await pumpApp(tester, _list(activeValue: "a", activeBadgeLabel: ""));
-      expect(find.text(""), findsNothing);
-    });
-
-    testWidgets("has no active row when the value matches nothing", (WidgetTester tester) async {
-      await pumpApp(tester, _list(activeValue: "zzz", activeBadgeLabel: _badge));
-
-      expect(find.text(_badge), findsNothing);
-      for (final String label in <String>["Alpha", "Beta", "Gamma"]) {
-        expect(_rowMaterial(tester, label).color, _scheme(tester).surfaceContainerLow);
-      }
-    });
-
-    testWidgets("keeps a long badge from overflowing the row", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        SizedBox(
-          width: 280,
-          child: _list(title: null, activeValue: "a", activeBadgeLabel: "A VERY LONG BADGE LABEL " * 4),
-        ),
-      );
-
-      expect(tester.takeException(), isNull);
-    });
-  });
-
-  group("layout", () {
-    testWidgets("caps a long list at maxHeight and scrolls", (WidgetTester tester) async {
-      await pumpApp(tester, _list(entries: _many(20)));
-
-      expect(tester.getSize(find.byType(ListView)).height, lessThanOrEqualTo(194));
-      final ScrollableState scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
-      expect(scrollable.position.maxScrollExtent, greaterThan(0));
-
-      await tester.drag(find.byType(ListView), const Offset(0, -3000));
-      await tester.pumpAndSettle();
-      expect(scrollable.position.pixels, closeTo(scrollable.position.maxScrollExtent, 0.01));
-      expect(find.text("Item 20"), findsOneWidget);
-      expect(find.text("Item 1"), findsNothing);
-    });
-
-    testWidgets("honours a custom maxHeight", (WidgetTester tester) async {
-      await pumpApp(tester, RankedList<String>(entries: _many(20), onItemTap: _ignore, maxHeight: 120));
-
-      expect(tester.getSize(find.byType(ListView)).height, 120);
-    });
-
-    testWidgets("shrink-wraps a short list", (WidgetTester tester) async {
-      await pumpApp(tester, _list(entries: _three.take(2).toList()));
-
-      expect(tester.getSize(find.byType(ListView)).height, lessThan(194));
-      expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 0);
-    });
-
-    testWidgets(
-      "paints a single always-visible scrollbar on desktop",
-      (WidgetTester tester) async {
-        await pumpApp(tester, _list(entries: _many(20)));
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(tester.takeException(), isNull);
-        expect(find.byType(Scrollbar), findsOneWidget);
-        expect(tester.widget<Scrollbar>(find.byType(Scrollbar)).thumbVisibility, isTrue);
-
-        await tester.drag(find.byType(ListView), const Offset(0, -200));
-        await tester.pump();
-        expect(tester.takeException(), isNull);
-      },
-      variant: TargetPlatformVariant.only(TargetPlatform.linux),
+  testWidgets("shows a custom message", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      const RankedList<String>(entries: <RankedListEntry<String>>[], onItemTap: _ignore, emptyLabel: "Nothing yet"),
     );
 
-    testWidgets("makes every row at least 48 dp tall", (WidgetTester tester) async {
-      await pumpApp(tester, _list());
+    expect(find.text("Nothing yet"), findsOneWidget);
+    expect(find.text(_emptyKey), findsNothing);
+  });
+}
 
-      for (final String label in <String>["Alpha", "Beta", "Gamma"]) {
-        final Finder ink = find.ancestor(of: find.text(label), matching: find.byType(InkWell)).first;
-        expect(tester.getSize(ink).height, greaterThanOrEqualTo(kMinTapTarget));
-      }
-    });
+void _headerTests() {
+  testWidgets("renders the title as a semantic header followed by the count", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(tester, _list());
 
-    testWidgets("ellipsises long labels and details without overflow", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        SizedBox(
-          width: 260,
-          child: _list(
-            title: null,
-            activeValue: "a",
-            activeBadgeLabel: _badge,
-            entries: <RankedListEntry<String>>[
-              RankedListEntry<String>(value: "a", label: "Long label " * 10, detail: "Long detail " * 10, score: 1),
-            ],
-          ),
-        ),
-      );
-
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets("rebuilds with new entries", (WidgetTester tester) async {
-      await pumpApp(tester, _list());
-      await pumpApp(tester, _list(entries: _many(2)));
-
-      expect(find.text("Alpha"), findsNothing);
-      expect(find.text("Item 2"), findsOneWidget);
-    });
-
-    testWidgets("disposes its scroll controller cleanly", (WidgetTester tester) async {
-      await pumpApp(tester, _list(entries: _many(20)));
-      await pumpApp(tester, const SizedBox.shrink());
-
-      expect(tester.takeException(), isNull);
-    });
+    expect(find.text(_title), findsOneWidget);
+    expect(find.text(_countKey), findsOneWidget);
+    expect(tester.getTopLeft(find.text(_countKey)).dx, greaterThan(tester.getTopLeft(find.text(_title)).dx));
+    expect(tester.getSemantics(find.text(_title)), isSemantics(label: _title, isHeader: true));
+    handle.dispose();
   });
 
-  group("semantics", () {
-    testWidgets("announces each row as a button with rank, label, detail and score", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(tester, _list());
+  testWidgets("renders the trailing slot at the right end", (WidgetTester tester) async {
+    await pumpApp(tester, _list(headerTrailing: const Text("slot")));
 
-      expect(
-        tester.getSemantics(_rowSemantics("Beta")),
-        isSemantics(label: "$_itemKey, Second, 62%", isButton: true, isSelected: false, hasTapAction: true),
-      );
-      expect(tester.getSemantics(_rowSemantics("Gamma")), isSemantics(label: _itemKey, isButton: true));
-      handle.dispose();
-    });
+    expect(find.text("slot"), findsOneWidget);
+    expect(tester.getTopRight(find.text("slot")).dx, greaterThan(tester.getTopRight(find.text(_countKey)).dx));
+  });
 
-    testWidgets("marks the active row as selected and reads its badge", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(tester, _list(activeValue: "a", activeBadgeLabel: _badge));
+  testWidgets("shows the trailing slot without title or count", (WidgetTester tester) async {
+    await pumpApp(tester, _list(title: null, headerTrailing: const Text("slot")));
 
-      expect(
-        tester.getSemantics(_rowSemantics("Alpha")),
-        isSemantics(label: "$_itemKey, 85%, $_badge", isButton: true, isSelected: true),
-      );
-      handle.dispose();
-    });
+    expect(find.text("slot"), findsOneWidget);
+    expect(find.text(_countKey), findsNothing);
+  });
 
-    testWidgets("uses the entry's semanticsLabel when set", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(
-        tester,
-        _list(
-          entries: const <RankedListEntry<String>>[
-            RankedListEntry<String>(value: "a", label: "Alpha", score: 0.5, semanticsLabel: "Custom reading"),
+  testWidgets("is absent without title and trailing slot", (WidgetTester tester) async {
+    await pumpApp(tester, _list(title: null));
+
+    expect(find.text(_countKey), findsNothing);
+    expect(find.text("Alpha"), findsOneWidget);
+  });
+
+  // Real strings: without EasyLocalization the count shows its raw key,
+  // which is far longer than the real "(n)".
+  testWidgets("keeps a long title on one line without overflow", (WidgetTester tester) async {
+    await _pumpLocalized(
+      tester,
+      const Locale("en"),
+      SizedBox(
+        width: 240,
+        child: _list(title: "A VERY LONG HEADER TITLE " * 6, headerTrailing: const Text("slot")),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text("slot"), findsOneWidget);
+    expect(find.text("(3)"), findsOneWidget);
+  });
+}
+
+void _rowTests() {
+  testWidgets("renders ranks and labels in the given order", (WidgetTester tester) async {
+    await pumpApp(tester, _list());
+
+    for (final String rank in <String>["1", "2", "3"]) {
+      expect(find.text(rank), findsOneWidget);
+    }
+    final double alpha = tester.getTopLeft(find.text("Alpha")).dy;
+    final double beta = tester.getTopLeft(find.text("Beta")).dy;
+    final double gamma = tester.getTopLeft(find.text("Gamma")).dy;
+    expect(alpha, lessThan(beta));
+    expect(beta, lessThan(gamma));
+    expect(tester.getCenter(find.text("1")).dy, closeTo(tester.getCenter(find.text("Alpha")).dy, 1));
+  });
+
+  testWidgets("uses the entry's own rank when set", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      _list(
+        entries: const <RankedListEntry<String>>[
+          RankedListEntry<String>(value: "x", label: "Tenth", rank: 10),
+          RankedListEntry<String>(value: "y", label: "Second"),
+        ],
+      ),
+    );
+
+    expect(find.text("10"), findsOneWidget);
+    expect(find.text("2"), findsOneWidget);
+    expect(find.text("1"), findsNothing);
+  });
+
+  testWidgets("fits a three-digit rank inside the circle", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      _list(
+        entries: const <RankedListEntry<String>>[RankedListEntry<String>(value: "x", label: "Far", rank: 128)],
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    final Finder rank = find.text("128");
+    // All three digits are laid out (none truncated) and scaled down.
+    expect(tester.renderObject<RenderParagraph>(rank).didExceedMaxLines, isFalse);
+    expect(tester.getRect(rank).width, lessThan(tester.getSize(rank).width));
+    final Rect circle = tester.getRect(find.ancestor(of: rank, matching: find.byType(DecoratedBox)).first);
+    final Rect text = tester.getRect(rank);
+    expect(circle.contains(text.topLeft) && circle.contains(text.bottomRight - const Offset(0.1, 0.1)), isTrue);
+  });
+
+  testWidgets("grows the rank circle with the text scale", (WidgetTester tester) async {
+    await pumpApp(tester, _textScaled(1, _list()));
+    final double rankHeight = tester.getRect(find.text("1")).height;
+    final double circleHeight = tester
+        .getSize(find.ancestor(of: find.text("1"), matching: find.byType(DecoratedBox)).first)
+        .height;
+
+    await pumpApp(tester, _textScaled(2, _list()));
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getRect(find.text("1")).height, closeTo(rankHeight * 2, rankHeight * 0.1));
+    final Finder circle = find.ancestor(of: find.text("1"), matching: find.byType(DecoratedBox)).first;
+    expect(tester.getSize(circle).height, closeTo(circleHeight * 2, 0.01));
+    expect(tester.renderObject<RenderParagraph>(find.text("1")).didExceedMaxLines, isFalse);
+  });
+
+  testWidgets("shows the detail line only when set", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      _list(
+        entries: const <RankedListEntry<String>>[
+          RankedListEntry<String>(value: "a", label: "Alpha", detail: "More"),
+          RankedListEntry<String>(value: "b", label: "Beta", detail: ""),
+        ],
+      ),
+    );
+
+    expect(find.text("More"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("More")).dy, greaterThan(tester.getTopLeft(find.text("Alpha")).dy));
+    expect(find.text(""), findsNothing);
+  });
+
+  testWidgets("shows the score as a percentage pill in the entry tone", (WidgetTester tester) async {
+    await pumpApp(tester, _list());
+
+    final StatusPill alpha = tester.widget<StatusPill>(find.widgetWithText(StatusPill, "85%"));
+    expect(alpha.tone, StatusTone.success);
+    expect(alpha.dense, isTrue);
+    expect(tester.widget<StatusPill>(find.widgetWithText(StatusPill, "62%")).tone, StatusTone.warning);
+    expect(find.byType(StatusPill), findsNWidgets(2));
+
+    final BuildContext context = _context(tester);
+    expect(
+      tester.widget<Text>(find.text("85%")).style?.color,
+      StatusTones.colorsOf(context, StatusTone.success).onContainer,
+    );
+    expect(
+      tester.widget<Text>(find.text("62%")).style?.color,
+      StatusTones.colorsOf(context, StatusTone.warning).onContainer,
+    );
+  });
+
+  testWidgets("hides the score when it is null or not finite", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      _list(
+        entries: const <RankedListEntry<String>>[
+          RankedListEntry<String>(value: "a", label: "Alpha"),
+          RankedListEntry<String>(value: "b", label: "Beta", score: double.nan),
+          RankedListEntry<String>(value: "c", label: "Gamma", score: double.infinity),
+        ],
+      ),
+    );
+
+    expect(find.byType(StatusPill), findsNothing);
+  });
+
+  testWidgets("draws the default trailing icon on every row", (WidgetTester tester) async {
+    await pumpApp(tester, _list());
+
+    expect(find.byIcon(Icons.swap_horiz), findsNWidgets(3));
+  });
+
+  testWidgets("draws a custom trailing icon, or none", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      const RankedList<String>(entries: _three, onItemTap: _ignore, trailingIcon: Icons.chevron_right),
+    );
+    expect(find.byIcon(Icons.chevron_right), findsNWidgets(3));
+    expect(find.byIcon(Icons.swap_horiz), findsNothing);
+
+    await pumpApp(tester, const RankedList<String>(entries: _three, onItemTap: _ignore, trailingIcon: null));
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    expect(find.byType(Icon), findsNothing);
+  });
+
+  testWidgets("calls onItemTap with the tapped row's value", (WidgetTester tester) async {
+    final List<String> taps = <String>[];
+    await pumpApp(tester, _list(onItemTap: taps.add));
+
+    await tester.tap(find.text("Beta"));
+    await tester.tap(find.byIcon(Icons.swap_horiz).last);
+    await tester.tap(find.text("85%"));
+    await tester.pump();
+
+    expect(taps, <String>["b", "c", "a"]);
+  });
+
+  testWidgets("uses the inactive row colours", (WidgetTester tester) async {
+    await pumpApp(tester, _list());
+
+    final ColorScheme cs = _scheme(tester);
+    expect(_rowMaterial(tester, "Alpha").color, cs.surfaceContainerLow);
+    expect(_rowSide(tester, "Alpha").color, cs.outlineVariant);
+    expect(tester.widget<Text>(find.text("Alpha")).style?.color, cs.onSurface);
+    expect(tester.widget<Text>(find.text("1")).style?.color, cs.onTertiaryContainer);
+  });
+}
+
+void _activeRowTests() {
+  testWidgets("highlights only the matching row with the tertiary accent", (WidgetTester tester) async {
+    await pumpApp(tester, _list(activeValue: "b", activeBadgeLabel: _badge));
+
+    final ColorScheme cs = _scheme(tester);
+    expect(_rowMaterial(tester, "Beta").color, cs.tertiaryContainer);
+    expect(_rowSide(tester, "Beta").color, cs.tertiary);
+    expect(tester.widget<Text>(find.text("Beta")).style?.color, cs.onTertiaryContainer);
+    expect(tester.widget<Text>(find.text("Second")).style?.color, cs.onTertiaryContainer);
+    expect(tester.widget<Text>(find.text("2")).style?.color, cs.onTertiary);
+    final Finder activeRow = find.ancestor(of: find.text("Beta"), matching: find.byType(Material)).first;
+    final Finder activeIcon = find.descendant(of: activeRow, matching: find.byType(Icon));
+    expect(tester.widget<Icon>(activeIcon).color, cs.onTertiary);
+    final BoxDecoration circle =
+        tester.widget<DecoratedBox>(find.ancestor(of: activeIcon, matching: find.byType(DecoratedBox)).first).decoration
+            as BoxDecoration;
+    expect(circle.color, cs.tertiary);
+    expect((circle.border! as Border).top.color, cs.tertiary);
+    expect(_rowMaterial(tester, "Alpha").color, cs.surfaceContainerLow);
+    expect(_rowSide(tester, "Gamma").color, cs.outlineVariant);
+  });
+
+  testWidgets("shows the badge inside the active row only", (WidgetTester tester) async {
+    await pumpApp(tester, _list(activeValue: "a", activeBadgeLabel: _badge));
+
+    expect(find.text(_badge), findsOneWidget);
+    final Finder activeRow = find.ancestor(of: find.text("Alpha"), matching: find.byType(Material)).first;
+    expect(find.descendant(of: activeRow, matching: find.text(_badge)), findsOneWidget);
+    expect(tester.widget<Text>(find.text(_badge)).style?.color, _scheme(tester).tertiary);
+  });
+
+  testWidgets("shows no badge when the label is null or empty", (WidgetTester tester) async {
+    await pumpApp(tester, _list(activeValue: "a"));
+    expect(find.text(_badge), findsNothing);
+    expect(_rowMaterial(tester, "Alpha").color, _scheme(tester).tertiaryContainer);
+
+    await pumpApp(tester, _list(activeValue: "a", activeBadgeLabel: ""));
+    expect(find.text(""), findsNothing);
+  });
+
+  testWidgets("has no active row when the value matches nothing", (WidgetTester tester) async {
+    await pumpApp(tester, _list(activeValue: "zzz", activeBadgeLabel: _badge));
+
+    expect(find.text(_badge), findsNothing);
+    for (final String label in <String>["Alpha", "Beta", "Gamma"]) {
+      expect(_rowMaterial(tester, label).color, _scheme(tester).surfaceContainerLow);
+    }
+  });
+
+  testWidgets("keeps a long badge from overflowing the row", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      SizedBox(
+        width: 280,
+        child: _list(title: null, activeValue: "a", activeBadgeLabel: "A VERY LONG BADGE LABEL " * 4),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+}
+
+void _layoutTests() {
+  testWidgets("caps a long list at maxHeight and scrolls", (WidgetTester tester) async {
+    await pumpApp(tester, _list(entries: _many(20)));
+
+    expect(tester.getSize(find.byType(ListView)).height, lessThanOrEqualTo(194));
+    final ScrollableState scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, closeTo(scrollable.position.maxScrollExtent, 0.01));
+    expect(find.text("Item 20"), findsOneWidget);
+    expect(find.text("Item 1"), findsNothing);
+  });
+
+  testWidgets("honours a custom maxHeight", (WidgetTester tester) async {
+    await pumpApp(tester, RankedList<String>(entries: _many(20), onItemTap: _ignore, maxHeight: 120));
+
+    expect(tester.getSize(find.byType(ListView)).height, 120);
+  });
+
+  testWidgets("shrink-wraps a short list", (WidgetTester tester) async {
+    await pumpApp(tester, _list(entries: _three.take(2).toList()));
+
+    expect(tester.getSize(find.byType(ListView)).height, lessThan(194));
+    expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 0);
+  });
+
+  testWidgets("paints a single always-visible scrollbar on desktop", (WidgetTester tester) async {
+    await pumpApp(tester, _list(entries: _many(20)));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(Scrollbar), findsOneWidget);
+    expect(tester.widget<Scrollbar>(find.byType(Scrollbar)).thumbVisibility, isTrue);
+
+    await tester.drag(find.byType(ListView), const Offset(0, -200));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets("makes every row at least 48 dp tall", (WidgetTester tester) async {
+    await pumpApp(tester, _list());
+
+    for (final String label in <String>["Alpha", "Beta", "Gamma"]) {
+      final Finder ink = find.ancestor(of: find.text(label), matching: find.byType(InkWell)).first;
+      expect(tester.getSize(ink).height, greaterThanOrEqualTo(kMinTapTarget));
+    }
+  });
+
+  testWidgets("ellipsises long labels and details without overflow", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      SizedBox(
+        width: 260,
+        child: _list(
+          title: null,
+          activeValue: "a",
+          activeBadgeLabel: _badge,
+          entries: <RankedListEntry<String>>[
+            RankedListEntry<String>(value: "a", label: "Long label " * 10, detail: "Long detail " * 10, score: 1),
           ],
         ),
-      );
+      ),
+    );
 
-      expect(tester.getSemantics(_rowSemantics("Alpha")), isSemantics(label: "Custom reading", isButton: true));
-      handle.dispose();
-    });
-
-    testWidgets("activates the row from the semantics tap action", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      final List<String> taps = <String>[];
-      await pumpApp(tester, _list(onItemTap: taps.add));
-
-      tester.semantics.tap(find.semantics.byLabel("$_itemKey, 85%"));
-      await tester.pump();
-
-      expect(taps, <String>["a"]);
-      handle.dispose();
-    });
-
-    testWidgets("renders the real English strings", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await _pumpLocalized(tester, const Locale("en"), _list(activeValue: "a", activeBadgeLabel: _badge));
-
-      expect(find.text("(3)"), findsOneWidget);
-      expect(find.text("85%"), findsOneWidget);
-      expect(
-        tester.getSemantics(_rowSemantics("Alpha")),
-        isSemantics(label: "Rank 1: Alpha, 85%, $_badge"),
-      );
-      handle.dispose();
-    });
-
-    testWidgets("renders the real French strings with the French percent format", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await _pumpLocalized(tester, const Locale("fr"), _list());
-
-      final String percent = NumberFormat.percentPattern("fr").format(0.85);
-      expect(percent, isNot("85%"));
-      expect(find.text(percent), findsOneWidget);
-      expect(tester.getSemantics(_rowSemantics("Alpha")), isSemantics(label: "Rang 1 : Alpha, $percent"));
-      handle.dispose();
-    });
-
-    testWidgets("renders the real empty message", (WidgetTester tester) async {
-      await _pumpLocalized(tester, const Locale("en"), _list(entries: const <RankedListEntry<String>>[]));
-
-      expect(find.text("No items to display."), findsOneWidget);
-    });
+    expect(tester.takeException(), isNull);
   });
 
-  group("theme", () {
-    testWidgets("renders under the dark theme with dark tokens", (WidgetTester tester) async {
-      await pumpApp(tester, _list(activeValue: "b", activeBadgeLabel: _badge), theme: AppTheme.dark());
+  testWidgets("rebuilds with new entries", (WidgetTester tester) async {
+    await pumpApp(tester, _list());
+    await pumpApp(tester, _list(entries: _many(2)));
 
-      expect(tester.takeException(), isNull);
-      final ColorScheme cs = _scheme(tester);
-      expect(cs.brightness, Brightness.dark);
-      expect(_rowMaterial(tester, "Beta").color, cs.tertiaryContainer);
-      expect(_rowMaterial(tester, "Alpha").color, cs.surfaceContainerLow);
-      expect(
-        tester.widget<Text>(find.text("85%")).style?.color,
-        StatusTones.colorsOf(_context(tester), StatusTone.success).onContainer,
-      );
-    });
+    expect(find.text("Alpha"), findsNothing);
+    expect(find.text("Item 2"), findsOneWidget);
+  });
+
+  testWidgets("disposes its scroll controller on unmount", (WidgetTester tester) async {
+    await pumpApp(tester, _list(entries: _many(20)));
+    final ScrollController? controller = tester.widget<ListView>(find.byType(ListView)).controller;
+    expect(controller, isNotNull);
+    expect(ChangeNotifier.debugAssertNotDisposed(controller!), isTrue);
+
+    await pumpApp(tester, const SizedBox.shrink());
+
+    expect(tester.takeException(), isNull);
+    expect(() => ChangeNotifier.debugAssertNotDisposed(controller), throwsFlutterError);
+  });
+}
+
+void _semanticsTests() {
+  testWidgets("announces each row as a button with rank, label, detail and score", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(tester, _list());
+
+    expect(
+      tester.getSemantics(_rowSemantics("Beta")),
+      isSemantics(label: "$_itemKey, Second, 62%", isButton: true, isSelected: false, hasTapAction: true),
+    );
+    expect(tester.getSemantics(_rowSemantics("Gamma")), isSemantics(label: _itemKey, isButton: true));
+    handle.dispose();
+  });
+
+  testWidgets("marks the active row as selected and reads its badge", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(tester, _list(activeValue: "a", activeBadgeLabel: _badge));
+
+    expect(
+      tester.getSemantics(_rowSemantics("Alpha")),
+      isSemantics(label: "$_itemKey, 85%, $_badge", isButton: true, isSelected: true),
+    );
+    handle.dispose();
+  });
+
+  testWidgets("uses the entry's semanticsLabel when set", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(
+      tester,
+      _list(
+        entries: const <RankedListEntry<String>>[
+          RankedListEntry<String>(value: "a", label: "Alpha", score: 0.5, semanticsLabel: "Custom reading"),
+        ],
+      ),
+    );
+
+    expect(tester.getSemantics(_rowSemantics("Alpha")), isSemantics(label: "Custom reading", isButton: true));
+    handle.dispose();
+  });
+
+  testWidgets("activates the row from the semantics tap action", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    final List<String> taps = <String>[];
+    await pumpApp(tester, _list(onItemTap: taps.add));
+
+    tester.semantics.tap(find.semantics.byLabel("$_itemKey, 85%"));
+    await tester.pump();
+
+    expect(taps, <String>["a"]);
+    handle.dispose();
+  });
+
+  testWidgets("renders the real English strings", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await _pumpLocalized(tester, const Locale("en"), _list(activeValue: "a", activeBadgeLabel: _badge));
+
+    expect(find.text("(3)"), findsOneWidget);
+    expect(find.text("85%"), findsOneWidget);
+    expect(tester.getSemantics(_rowSemantics("Alpha")), isSemantics(label: "Rank 1: Alpha, 85%, $_badge"));
+    handle.dispose();
+  });
+
+  testWidgets("renders the real French strings with the French percent format", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await _pumpLocalized(tester, const Locale("fr"), _list());
+
+    final String percent = NumberFormat.percentPattern("fr").format(0.85);
+    expect(percent, isNot("85%"));
+    expect(find.text(percent), findsOneWidget);
+    expect(tester.getSemantics(_rowSemantics("Alpha")), isSemantics(label: "Rang 1 : Alpha, $percent"));
+    handle.dispose();
+  });
+
+  testWidgets("renders the real empty message", (WidgetTester tester) async {
+    await _pumpLocalized(tester, const Locale("en"), _list(entries: const <RankedListEntry<String>>[]));
+
+    expect(find.text("No items to display."), findsOneWidget);
+  });
+}
+
+void _themeTests() {
+  testWidgets("renders under the dark theme with dark tokens", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      _list(activeValue: "b", activeBadgeLabel: _badge),
+      theme: AppTheme.dark(),
+    );
+
+    expect(tester.takeException(), isNull);
+    final ColorScheme cs = _scheme(tester);
+    expect(cs.brightness, Brightness.dark);
+    expect(_rowMaterial(tester, "Beta").color, cs.tertiaryContainer);
+    expect(_rowMaterial(tester, "Alpha").color, cs.surfaceContainerLow);
+    expect(
+      tester.widget<Text>(find.text("85%")).style?.color,
+      StatusTones.colorsOf(_context(tester), StatusTone.success).onContainer,
+    );
   });
 }

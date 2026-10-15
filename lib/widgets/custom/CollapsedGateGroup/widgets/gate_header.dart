@@ -2,7 +2,8 @@
 //
 // Private header of CollapsedGateGroup: lock icon, summary text and an
 // up / down chevron. One button semantics node with an expanded state and a
-// localised tap hint; at least kMinTapTarget tall.
+// localised hint (Semantics.hint, read on every platform); at least
+// kMinTapTarget tall.
 
 part of "../index.dart";
 
@@ -37,7 +38,7 @@ final class _GateHeader extends StatelessWidget {
       container: true,
       button: true,
       expanded: isExpanded,
-      onTapHint: hint,
+      hint: hint,
       child: InkWell(
         onTap: onToggle,
         child: ConstrainedBox(

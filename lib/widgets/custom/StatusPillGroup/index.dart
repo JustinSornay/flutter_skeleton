@@ -89,15 +89,19 @@ final class StatusPillGroupItem {
 ///   should trigger a refetch (same contract as `Listing`): a new [load]
 ///   closure alone never reloads.
 /// - While loading: a `Loader` (16 dp, announced as `common.loading`)
-///   centred in a 32 dp slot, the height of one pill row.
+///   centred in a 32 dp slot, the height of one pill row at the default text
+///   scale (under a larger text scale the loaded row is taller, so the layout
+///   grows when the pills arrive).
 /// - Loaded: every item as a [StatusPill] (default padding), in order, in a
 ///   [Wrap] with 8 dp spacing and run spacing; items with an empty label are
 ///   skipped. An empty list renders `SizedBox.shrink()`.
 /// - Load failure (thrown synchronously or asynchronously): the error is
 ///   logged with `Logger().e` and never escapes the widget; one neutral pill
 ///   with `Icons.error_outline` shows [errorLabel], else
-///   `custom.status_pill_group.unavailable`. It is a live region, so screen
-///   readers announce it.
+///   `custom.status_pill_group.unavailable`. It sits in a [Wrap] like the
+///   loaded pills, so it keeps its own width under a tight parent width
+///   (stretched `Column`, `ListView`). It is a live region, so screen readers
+///   announce it.
 ///
 /// No tooltip and no overlay, so no `Overlay` ancestor is needed: the widget
 /// works anywhere in the tree, including `Layout`.

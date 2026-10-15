@@ -2,10 +2,21 @@
 //
 // Widget tests for RankedBadgeList: empty list, descending-weight ranking
 // (stable ties, input never mutated), collapsed slice and toggle (i18n keys,
-// overrides, chevron, expand / collapse), the composed StatusPill (text,
-// tone colours, semantics), the trailing builder, toggle semantics and tap
-// target, reduced motion, a narrow parent and the dark theme.
+// the real show_all string with the total {count}, overrides, empty
+// overrides falling back, chevron, expand / collapse), the composed
+// StatusPill (text, tone colours, semantics, empty host semantics label, an
+// item with no text), the trailing builder, toggle semantics and tap target,
+// reduced motion, a narrow parent (value kept for screen readers) and the
+// dark theme. The real-strings test resets the translations singleton, so
+// the raw-key tests pass in any order.
 
+// Localization.load and Translations are the only way to fill (and empty)
+// the translations singleton that `.tr()` reads without an EasyLocalization
+// tree; see the "real strings" test.
+// ignore: implementation_imports
+import "package:easy_localization/src/localization.dart";
+// ignore: implementation_imports
+import "package:easy_localization/src/translations.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
@@ -179,6 +190,27 @@ void main() {
       expect(midway, lessThan(expanded));
     });
 
+    testWidgets("real strings: show_all interpolates the total {count}", (WidgetTester tester) async {
+      addTearDown(() => Localization.load(const Locale("fr")));
+      Localization.load(
+        const Locale("en"),
+        translations: Translations(<String, dynamic>{
+          "custom": <String, dynamic>{
+            "ranked_badge_list": <String, String>{"show_all": "Show all ({count})", "show_less": "Show less"},
+          },
+        }),
+      );
+      await pumpApp(tester, const RankedBadgeList(items: _items));
+
+      // 4 items in total (1 hidden): the count is the total, not the hidden part.
+      expect(find.text("Show all (4)"), findsOneWidget);
+      expect(find.text(_showAll), findsNothing);
+
+      await _tapToggle(tester);
+      expect(find.text("Show less"), findsOneWidget);
+      expect(find.text(_showLess), findsNothing);
+    });
+
     testWidgets("host labels override the built-in keys", (WidgetTester tester) async {
       await pumpApp(
         tester,
@@ -190,6 +222,18 @@ void main() {
       await _tapToggle(tester);
       expect(find.text("Fewer causes"), findsOneWidget);
       expect(find.text(_showLess), findsNothing);
+    });
+
+    testWidgets("empty host labels fall back to the built-in keys", (WidgetTester tester) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await pumpApp(tester, const RankedBadgeList(items: _items, showAllLabel: "", showLessLabel: ""));
+      expect(find.text(_showAll), findsOneWidget);
+      expect(tester.getSemantics(_toggle()).label, _showAll);
+
+      await _tapToggle(tester);
+      expect(find.text(_showLess), findsOneWidget);
+      expect(tester.getSemantics(_toggle()).label, _showLess);
+      handle.dispose();
     });
 
     testWidgets("is a button with an expanded state", (WidgetTester tester) async {
@@ -311,7 +355,43 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets("an empty host semanticsLabel falls back to label and value", (WidgetTester tester) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        const RankedBadgeList(
+          items: <RankedBadgeItem>[
+            RankedBadgeItem(id: "a", label: "Alpha", weight: 1, valueLabel: "−30 %", semanticsLabel: ""),
+          ],
+        ),
+      );
+
+      expect(find.bySemanticsLabel("Alpha, −30 %"), findsOneWidget);
+      expect(find.bySemanticsLabel("Alpha · −30 %"), findsNothing);
+      handle.dispose();
+    });
+
+    testWidgets("an item without label or value renders no row", (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        RankedBadgeList(
+          items: const <RankedBadgeItem>[
+            RankedBadgeItem(id: "x", label: "", weight: 2, valueLabel: ""),
+            RankedBadgeItem(id: "b", label: "Beta", weight: 1),
+          ],
+          trailingBuilder: (BuildContext context, RankedBadgeItem item) => Text("help-${item.id}"),
+        ),
+      );
+
+      expect(_pillLabels(tester), <String>["Beta"]);
+      expect(find.text("help-x"), findsNothing);
+      expect(find.text("help-b"), findsOneWidget);
+      // No empty 8 dp row above Beta.
+      expect(tester.getTopLeft(find.byType(StatusPill)).dy, tester.getTopLeft(find.byType(RankedBadgeList)).dy);
+    });
+
     testWidgets("a long label ellipsises in a narrow parent", (WidgetTester tester) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
       await pumpApp(
         tester,
         SizedBox(
@@ -327,6 +407,9 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(tester.getSize(find.byType(StatusPill)).width, lessThanOrEqualTo(200));
+      // The value may be cut from the visible line; screen readers still get it.
+      expect(find.bySemanticsLabel("A very long label that cannot fit on one line, −9 %"), findsOneWidget);
+      handle.dispose();
     });
   });
 

@@ -49,6 +49,11 @@
       "close": "Close",
       "submit_failed": "This action could not be completed. Please try again."
     },
+    "async_summary_card": {
+      "loading": "Loading content…",
+      "unavailable": "Content unavailable for now.",
+      "retry": "Retry"
+    },
     "auth_locked_state": {
       "sign_in": "Sign in"
     },
@@ -118,6 +123,12 @@
       "change": "Change",
       "loading": "Loading"
     },
+    "delta_cards": {
+      "increase": "Increase",
+      "decrease": "Decrease",
+      "stable": "Stable",
+      "shift": "Changed"
+    },
     "edit_fields_sheet": {
       "cancel": "Cancel",
       "save": "Save",
@@ -137,6 +148,10 @@
       "not_verified": "Email not verified yet. Check your spam folder.",
       "check_failed": "Verification check failed. Please try again.",
       "close": "Close"
+    },
+    "expandable_card": {
+      "expand": "Expand",
+      "collapse": "Collapse"
     },
     "expandable_group_tile": {
       "expand": "Expand group",
@@ -178,6 +193,9 @@
       "older": "earlier",
       "show_older": "Show older entries ({count})"
     },
+    "icon_list_panel": {
+      "empty": "No items"
+    },
     "level_progress_bar": {
       "counter": "{count}/{total} {label}",
       "next_title": "At the next level:",
@@ -186,6 +204,14 @@
     },
     "list_entry_card": {
       "open_hint": "Open details"
+    },
+    "location_bar": {
+      "placeholder": "Search for a place…",
+      "cancel": "Cancel",
+      "currently_at": "Currently: {name}",
+      "unknown_place": "Selected location",
+      "my_location": "My location",
+      "modify_semantics": "Edit selected location"
     },
     "map_export_overlay": {
       "north": "North",
@@ -249,6 +275,26 @@
       "submit": "Confirm",
       "submit_error": "Could not save. Please try again."
     },
+    "polygon_wizard_sheet": {
+      "back": "Back",
+      "next": "Next",
+      "submit": "Create",
+      "submit_error": "Creation failed. Please try again.",
+      "undo": "Undo",
+      "reset": "Reset",
+      "points_placed": "{count} point(s) placed",
+      "crossing_edges": "Edges cross: move or remove a point.",
+      "loading": "Loading",
+      "name_label": "Name",
+      "default_name": "Untitled",
+      "selection_label": "Selection",
+      "selected_count": "{count} selected",
+      "selection_error": "Could not load this item. Please try again.",
+      "remove_item": "Remove {label}",
+      "points_label": "Vertices",
+      "points_count": "{count} vertex(es) drawn",
+      "step_semantics": "Step {current} of {total}: {title}"
+    },
     "preview_confirm_sheet": {
       "confirm": "Confirm",
       "cancel": "Cancel"
@@ -283,6 +329,9 @@
       "count": "({count})",
       "empty": "No items to display.",
       "item_semantics": "Rank {rank}: {label}"
+    },
+    "ranked_list_panel": {
+      "rank": "Rank {rank}"
     },
     "score_banner": {
       "value": "{value} / 100",
@@ -362,6 +411,11 @@
       "semantics": "Trend chart",
       "threshold": "Threshold",
       "threshold_crossed": "Threshold crossed"
+    },
+    "trend_split_section": {
+      "rising": "Rising",
+      "falling": "Falling",
+      "empty": "No items"
     },
     "value_matrix": {
       "load_error": "Could not load the table.",

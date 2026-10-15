@@ -18,25 +18,30 @@ part "view.dart";
 part "widgets/image_header.dart";
 part "widgets/stat_badge.dart";
 
-/// One stat of a [PreviewConfirmSheet]: a small caption ([label]) above a
-/// pill showing [value].
+/// One stat of a [PreviewConfirmSheet]: a small [label] above a pill
+/// showing [value], followed by " · [caption]" when [caption] is set.
 ///
 /// - `tinted: false` (default): an outlined [PillBadge]. With a [tone], the
 ///   pill starts with a dot and its text uses the tone `foreground`; without
 ///   one, it is a plain neutral pill.
-/// - `tinted: true`: a [StatusPill] filled with the tone `container`, with
-///   the tone icon ([StatusTone.icon]) before the text. A null [tone] counts
-///   as [StatusTone.neutral].
+/// - `tinted: true`: a [StatusPill] filled with the tone `container`. A
+///   non-neutral tone adds its icon ([StatusTone.icon]) before the text. A
+///   null [tone] counts as [StatusTone.neutral], which carries no status and
+///   so shows no icon.
 ///
-/// The label and the value are always visible, so a tone is never conveyed
-/// by colour alone; a host that needs the meaning of the tone in words adds
-/// it to [value] (e.g. "0.72 · Good").
+/// The dot is the same glyph for every tone, and screen readers hear only
+/// the text ("label: value", plus ", caption" when there is one), never the
+/// tone. So whenever the tone carries meaning, the host must also give it in
+/// words: a [caption] (shown and announced) or a [semanticsLabel].
 @immutable
 final class PreviewStat {
-  /// Caption above the pill, already localised. Always shown.
+  /// Small text above the pill, already localised. Always shown.
   final String label;
 
-  /// Preformatted value shown in the pill (the host formats numbers).
+  /// Preformatted value shown in the pill. The host formats numbers for the
+  /// app locale (intl `NumberFormat` with `context.locale.toLanguageTag()`),
+  /// so "0,72" in French. A [PreviewStat.delta] stat is formatted by the
+  /// widget instead: see there.
   final String value;
 
   /// Colour coding. Null → no colour coding.
@@ -45,34 +50,80 @@ final class PreviewStat {
   /// Draws a tone-filled [StatusPill] instead of an outlined [PillBadge].
   final bool tinted;
 
-  /// Screen-reader label of the whole stat. Null or empty → "label: value".
+  /// Words for the [tone] (e.g. "Good", "Worse"), already localised. Shown
+  /// after [value] in the pill ("value · caption") and appended to the
+  /// default semantics label. Null or empty → nothing is added. Give one (or
+  /// a [semanticsLabel]) whenever the tone carries meaning, so colour is
+  /// never the only signal.
+  ///
+  /// Keep it to a short word or two: it shares the pill's single line with
+  /// [value], and when the sheet is narrow or the text scale large, the end
+  /// of that line is ellipsized (the semantics label keeps it whole).
+  final String? caption;
+
+  /// Screen-reader label of the whole stat. Null or empty → "label: value",
+  /// or "label: value, caption" when there is a [caption].
   final String? semanticsLabel;
+
+  /// Signed change of a [PreviewStat.delta] stat, formatted by the view for
+  /// the ambient locale. Null for every other stat (and for "=").
+  final double? _delta;
+
+  /// Decimals of [_delta].
+  final int _fractionDigits;
 
   const PreviewStat({
     required this.label,
     required this.value,
     this.tone,
     this.tinted = false,
+    this.caption,
     this.semanticsLabel,
-  });
+  }) : _delta = null,
+       _fractionDigits = 0;
+
+  /// Tinted stat of a non-zero [PreviewStat.delta].
+  const PreviewStat._change({
+    required this.label,
+    required this.value,
+    required this.tone,
+    required double delta,
+    required int fractionDigits,
+    this.caption,
+    this.semanticsLabel,
+  }) : tinted = true,
+       _delta = delta,
+       _fractionDigits = fractionDigits;
 
   /// Signed change, always [tinted].
   ///
   /// - `|delta| < epsilon` → value "=", tone [StatusTone.neutral].
-  /// - otherwise → "+x.xx" or "-x.xx" with [fractionDigits] decimals, tone
-  ///   [StatusTone.success] when the change is good and [StatusTone.danger]
-  ///   when it is bad. A change is good when `delta > 0` and
-  ///   [higherIsBetter], or `delta < 0` and not [higherIsBetter]; the sign
-  ///   never flips.
+  /// - otherwise → the change with [fractionDigits] decimals and an explicit
+  ///   sign, tone [StatusTone.success] when the change is good and
+  ///   [StatusTone.danger] when it is bad. A change is good when `delta > 0`
+  ///   and [higherIsBetter], or `delta < 0` and not [higherIsBetter]; the
+  ///   sign never flips.
+  ///
+  /// The pill and the default semantics label format the change with intl
+  /// `NumberFormat.decimalPatternDigits` for the ambient locale
+  /// (`Localizations.maybeLocaleOf`, so the app's `context.locale`): "+0.13"
+  /// in English, "+0,13" in French, with the locale's grouping for large
+  /// values. [value] keeps the locale-independent form ("+0.13": decimal
+  /// point, no grouping).
   ///
   /// Keep [epsilon] at least half a unit of the last shown decimal, or a tiny
   /// change can render as "+0.00".
+  ///
+  /// [caption] and [semanticsLabel] work as in the default constructor. The
+  /// good / bad tone is not announced, so give the words for it (e.g.
+  /// "Better" / "Worse") in one of them.
   factory PreviewStat.delta({
     required String label,
     required double delta,
     bool higherIsBetter = true,
     int fractionDigits = 2,
     double epsilon = 0.005,
+    String? caption,
     String? semanticsLabel,
   }) {
     if (delta.abs() < epsilon) {
@@ -81,16 +132,19 @@ final class PreviewStat {
         value: "=",
         tone: StatusTone.neutral,
         tinted: true,
+        caption: caption,
         semanticsLabel: semanticsLabel,
       );
     }
     final bool isGood = higherIsBetter ? delta > 0 : delta < 0;
     final String sign = delta > 0 ? "+" : "";
-    return PreviewStat(
+    return PreviewStat._change(
       label: label,
       value: "$sign${delta.toStringAsFixed(fractionDigits)}",
       tone: isGood ? StatusTone.success : StatusTone.danger,
-      tinted: true,
+      delta: delta,
+      fractionDigits: fractionDigits,
+      caption: caption,
       semanticsLabel: semanticsLabel,
     );
   }
@@ -110,7 +164,7 @@ final class PreviewStat {
 /// - [subtitle] (13 sp, `cs.onSurfaceVariant`, italic when
 ///   [italicSubtitle]), hidden when null or empty.
 /// - [stats] in a [Wrap] (8 dp spacing, so long labels flow onto several
-///   runs): each is a caption above a composed [PillBadge] or [StatusPill]
+///   runs): each is a label above a composed [PillBadge] or [StatusPill]
 ///   (see [PreviewStat]), read as one semantics node.
 /// - a full-width [FilledButton] (at least [kMinTapTarget] tall) calling
 ///   [onConfirm], labelled [confirmLabel] (null or empty →
@@ -125,6 +179,12 @@ final class PreviewStat {
 /// `ModalProvider.show(AppModal(...))` and closes it itself in [onConfirm]
 /// and [onCancel] (e.g. `Navigator.of(sheetContext).pop()` or
 /// `modalProvider.dismiss()`).
+///
+/// It does not clip either, and the header image is full-width with square
+/// corners. A host with rounded corners and no drag handle above the
+/// content (`AppModal`, or a bottom sheet without `showDragHandle`) wraps it
+/// in a `ClipRRect` with the host's radius (16 dp for `AppModal`), or the
+/// image paints over those corners.
 ///
 /// Needs neither a `Material` nor an `Overlay` ancestor: the buttons bring
 /// their own `Material` and nothing opens a tooltip or a popup. Content

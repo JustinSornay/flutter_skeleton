@@ -3,9 +3,11 @@
 // Widget tests for SwimlaneCard: header (title, subtitle, trailing slot,
 // ellipsis), one tile per item with its value / caption / StatusPill badge,
 // generic selection callback (tap and keyboard), read-only lane, tile
-// semantics, selected outline and value colours (tone and primary fallback),
-// reduced motion, horizontal scrolling, value scale-down, text scaling, the
-// tile width assert, tap target guidelines and the dark theme.
+// semantics, selected outline, fill and value colours (tone and primary
+// fallback), value / caption contrast on the selected fill for every tone in
+// both themes, reduced motion, horizontal scrolling, value scale-down, text
+// scaling, the tile width (custom and assert), tap target guidelines and the
+// dark theme.
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -71,6 +73,24 @@ ColorScheme _scheme(WidgetTester tester) => Theme.of(_context(tester)).colorSche
 
 ToneColors _tone(WidgetTester tester, StatusTone tone) => StatusTones.colorsOf(_context(tester), tone);
 
+/// Opaque fill of a selected tile: [accent] at 8 % over `cs.surfaceContainer`.
+Color _selectedFill(WidgetTester tester, Color accent) {
+  return Color.alphaBlend(accent.withValues(alpha: 0.08), _scheme(tester).surfaceContainer);
+}
+
+/// Colour of the card behind the tiles.
+Color _cardColor(WidgetTester tester) {
+  final Finder card = find.descendant(of: find.byType(SwimlaneCard<_Variant>), matching: find.byType(Container));
+  return (tester.widget<Container>(card.first).decoration! as BoxDecoration).color!;
+}
+
+/// WCAG contrast ratio between two opaque colours.
+double _contrast(Color a, Color b) {
+  final double la = a.computeLuminance();
+  final double lb = b.computeLuminance();
+  return la > lb ? (la + 0.05) / (lb + 0.05) : (lb + 0.05) / (la + 0.05);
+}
+
 /// Wraps [child] with a MediaQuery override built from the ambient one.
 Widget _withMediaQuery(Widget child, MediaQueryData Function(MediaQueryData data) update) {
   return Builder(
@@ -79,6 +99,23 @@ Widget _withMediaQuery(Widget child, MediaQueryData Function(MediaQueryData data
 }
 
 void main() {
+  _layoutTests();
+  _selectionTests();
+  _semanticsTests();
+  _contrastTests();
+
+  testWidgets("renders in the dark theme with tone colours", (WidgetTester tester) async {
+    await pumpApp(tester, _card(subtitle: "Subtitle", selectedId: _Variant.first), theme: AppTheme.dark());
+
+    expect(tester.takeException(), isNull);
+    expect(_scheme(tester).brightness, Brightness.dark);
+    final Color foreground = _tone(tester, StatusTone.success).foreground;
+    expect(_outline(tester, "0.87").color, foreground);
+    expect(_textColor(tester, "0.87"), foreground);
+  });
+}
+
+void _layoutTests() {
   group("SwimlaneCard layout", () {
     testWidgets("renders the title and one tile per item with value and caption", (WidgetTester tester) async {
       await pumpApp(tester, _card());
@@ -148,6 +185,14 @@ void main() {
       expect(tester.getSize(_tile("0.87")), const Size(80, kDefaultPadding * 12));
     });
 
+    testWidgets("a custom tileWidth sizes every tile", (WidgetTester tester) async {
+      await pumpApp(tester, const SwimlaneCard<_Variant>(title: _title, items: _items, tileWidth: 120));
+
+      for (final SwimlaneItem<_Variant> item in _items) {
+        expect(tester.getSize(_tile(item.value)).width, 120);
+      }
+    });
+
     testWidgets("a long value scales down inside the tile", (WidgetTester tester) async {
       await pumpApp(
         tester,
@@ -201,7 +246,9 @@ void main() {
       );
     });
   });
+}
 
+void _selectionTests() {
   group("SwimlaneCard selection", () {
     testWidgets("tapping a tile reports its id once", (WidgetTester tester) async {
       final List<_Variant> selected = <_Variant>[];
@@ -243,7 +290,7 @@ void main() {
       final Color foreground = _tone(tester, StatusTone.warning).foreground;
       expect(_outline(tester, "0.73").color, foreground);
       expect(_outline(tester, "0.73").width, 1.5);
-      expect(_decoration(tester, "0.73").color, foreground.withValues(alpha: 0.12));
+      expect(_decoration(tester, "0.73").color, _selectedFill(tester, foreground));
       expect(_textColor(tester, "0.73"), foreground);
     });
 
@@ -252,7 +299,7 @@ void main() {
 
       final ColorScheme cs = _scheme(tester);
       expect(_outline(tester, "0.55").color, cs.primary);
-      expect(_decoration(tester, "0.55").color, cs.primary.withValues(alpha: 0.12));
+      expect(_decoration(tester, "0.55").color, _selectedFill(tester, cs.primary));
       expect(_textColor(tester, "0.55"), cs.onSurface);
     });
 
@@ -298,7 +345,9 @@ void main() {
       expect(tester.widget<AnimatedContainer>(_tile("0.87")).duration, Duration.zero);
     });
   });
+}
 
+void _semanticsTests() {
   group("SwimlaneCard semantics", () {
     testWidgets("each tile is one selectable button labelled label, value, badge", (WidgetTester tester) async {
       final SemanticsHandle handle = tester.ensureSemantics();
@@ -349,14 +398,34 @@ void main() {
       handle.dispose();
     });
   });
+}
 
-  testWidgets("renders in the dark theme with tone colours", (WidgetTester tester) async {
-    await pumpApp(tester, _card(subtitle: "Subtitle", selectedId: _Variant.first), theme: AppTheme.dark());
+/// A selected tile in every tone (and without one), in both themes: the fill
+/// is opaque and the value and caption stay at least 4.5:1 on it.
+void _contrastTests() {
+  final Map<String, ThemeData Function()> themes = <String, ThemeData Function()>{
+    "light": AppTheme.light,
+    "dark": AppTheme.dark,
+  };
 
-    expect(tester.takeException(), isNull);
-    expect(_scheme(tester).brightness, Brightness.dark);
-    final Color foreground = _tone(tester, StatusTone.success).foreground;
-    expect(_outline(tester, "0.87").color, foreground);
-    expect(_textColor(tester, "0.87"), foreground);
+  group("SwimlaneCard selected tile contrast", () {
+    for (final MapEntry<String, ThemeData Function()> theme in themes.entries) {
+      for (final StatusTone? tone in <StatusTone?>[null, ...StatusTone.values]) {
+        testWidgets("${theme.key} theme, ${tone?.name ?? "no tone"}", (WidgetTester tester) async {
+          final SwimlaneItem<_Variant> item = SwimlaneItem<_Variant>(id: _Variant.first, value: "0.87", label: "Plan A", tone: tone);
+          await pumpApp(
+            tester,
+            _card(items: <SwimlaneItem<_Variant>>[item], selectedId: _Variant.first),
+            theme: theme.value(),
+          );
+
+          final Color decoration = _decoration(tester, "0.87").color!;
+          expect(decoration.a, 1.0);
+          final Color fill = Color.alphaBlend(decoration, _cardColor(tester));
+          expect(_contrast(_textColor(tester, "0.87")!, fill), greaterThanOrEqualTo(4.5));
+          expect(_contrast(_textColor(tester, "Plan A")!, fill), greaterThanOrEqualTo(4.5));
+        });
+      }
+    }
   });
 }

@@ -64,7 +64,7 @@ part "widgets/summary_header.dart";
 /// Accessibility: the header is one semantics node labelled
 /// `custom.comparison_panel.summary_semantics` ("{current} compared with
 /// {candidate}", each side read as "title (subtitle)"); when it is
-/// tappable it is a button with an expanded state and the hint
+/// tappable it is a focusable button with an expanded state and the hint
 /// `custom.comparison_panel.show_details` / `hide_details`.
 ///
 /// Content strings (tags, titles, subtitles, metric labels, change texts,

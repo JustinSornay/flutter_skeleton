@@ -49,6 +49,11 @@
       "close": "Fermer",
       "submit_failed": "Impossible d'effectuer cette action. Réessayez."
     },
+    "async_summary_card": {
+      "loading": "Chargement du contenu…",
+      "unavailable": "Contenu indisponible pour le moment.",
+      "retry": "Réessayer"
+    },
     "auth_locked_state": {
       "sign_in": "Se connecter"
     },
@@ -118,6 +123,12 @@
       "change": "Modifier",
       "loading": "Chargement"
     },
+    "delta_cards": {
+      "increase": "Hausse",
+      "decrease": "Baisse",
+      "stable": "Stable",
+      "shift": "Changement"
+    },
     "edit_fields_sheet": {
       "cancel": "Annuler",
       "save": "Enregistrer",
@@ -137,6 +148,10 @@
       "not_verified": "Email pas encore vérifié. Pensez à regarder dans vos spams.",
       "check_failed": "La vérification a échoué. Réessayez.",
       "close": "Fermer"
+    },
+    "expandable_card": {
+      "expand": "Déplier",
+      "collapse": "Replier"
     },
     "expandable_group_tile": {
       "expand": "Déplier le groupe",
@@ -178,6 +193,9 @@
       "older": "plus tôt",
       "show_older": "Afficher les entrées plus anciennes ({count})"
     },
+    "icon_list_panel": {
+      "empty": "Aucun élément"
+    },
     "level_progress_bar": {
       "counter": "{count}/{total} {label}",
       "next_title": "Au niveau suivant :",
@@ -186,6 +204,14 @@
     },
     "list_entry_card": {
       "open_hint": "Ouvrir le détail"
+    },
+    "location_bar": {
+      "placeholder": "Rechercher un lieu…",
+      "cancel": "Annuler",
+      "currently_at": "Actuellement : {name}",
+      "unknown_place": "Lieu sélectionné",
+      "my_location": "Ma position",
+      "modify_semantics": "Modifier le lieu sélectionné"
     },
     "map_export_overlay": {
       "north": "Nord",
@@ -249,6 +275,26 @@
       "submit": "Valider",
       "submit_error": "Impossible d'enregistrer. Réessayez."
     },
+    "polygon_wizard_sheet": {
+      "back": "Retour",
+      "next": "Suivant",
+      "submit": "Créer",
+      "submit_error": "La création a échoué. Réessayez.",
+      "undo": "Défaire",
+      "reset": "Réinitialiser",
+      "points_placed": "{count} point(s) placé(s)",
+      "crossing_edges": "Des côtés se croisent : déplacez ou retirez un point.",
+      "loading": "Chargement",
+      "name_label": "Nom",
+      "default_name": "Sans titre",
+      "selection_label": "Sélection",
+      "selected_count": "{count} sélectionné(s)",
+      "selection_error": "Impossible de charger cet élément. Réessayez.",
+      "remove_item": "Retirer {label}",
+      "points_label": "Sommets",
+      "points_count": "{count} sommet(s) tracé(s)",
+      "step_semantics": "Étape {current} sur {total} : {title}"
+    },
     "preview_confirm_sheet": {
       "confirm": "Confirmer",
       "cancel": "Annuler"
@@ -283,6 +329,9 @@
       "count": "({count})",
       "empty": "Aucun élément à afficher.",
       "item_semantics": "Rang {rank} : {label}"
+    },
+    "ranked_list_panel": {
+      "rank": "Rang {rank}"
     },
     "score_banner": {
       "value": "{value} / 100",
@@ -362,6 +411,11 @@
       "semantics": "Graphique d'évolution",
       "threshold": "Seuil",
       "threshold_crossed": "Seuil franchi"
+    },
+    "trend_split_section": {
+      "rising": "En hausse",
+      "falling": "En baisse",
+      "empty": "Aucun élément"
     },
     "value_matrix": {
       "load_error": "Impossible de charger le tableau.",

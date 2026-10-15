@@ -4,11 +4,11 @@
 // header toggle, initiallyExpanded, the pill fallback (group default, entry
 // override, empty string), the call to action and its absence, default and
 // custom texts, the empty list, motion and reduced motion, header and row
-// semantics, the 48 dp targets, the ColorScheme tokens under the light
-// and dark themes, the row layout at narrow widths and large text scales,
-// and the real default strings (with {count}) through an in-memory
-// translations singleton. That test resets the singleton, so the raw-key
-// tests pass in any order.
+// semantics, keyboard focus skipping the hidden content, the 48 dp
+// targets, the ColorScheme tokens under the light and dark themes, the row
+// layout at narrow widths and large text scales, and the real default
+// strings (with {count}) through an in-memory translations singleton. That
+// test resets the singleton, so the raw-key tests pass in any order.
 
 // Localization.load and Translations are the only way to fill (and empty)
 // the translations singleton that `.tr()` reads without an EasyLocalization
@@ -19,6 +19,7 @@ import "package:easy_localization/src/localization.dart";
 import "package:easy_localization/src/translations.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/CollapsedGateGroup/index.dart";
@@ -97,6 +98,28 @@ Widget _textScaled(Widget child, double scale) {
 Future<void> _expand(WidgetTester tester) async {
   await tester.tap(_header());
   await tester.pumpAndSettle();
+}
+
+/// Presses Tab [count] times and returns, after each press, the type of the
+/// nearest FilledButton / TextButton / InkWell holding the primary focus (null
+/// when none does). Buttons are checked first: they build their own InkWell.
+Future<List<Type?>> _tab(WidgetTester tester, int count) async {
+  final List<Type?> owners = <Type?>[];
+  for (int i = 0; i < count; i++) {
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    final BuildContext? focused = FocusManager.instance.primaryFocus?.context;
+    owners.add(_focusOwner(focused));
+  }
+  return owners;
+}
+
+Type? _focusOwner(BuildContext? context) {
+  if (context == null) return null;
+  if (context.findAncestorWidgetOfExactType<FilledButton>() != null) return FilledButton;
+  if (context.findAncestorWidgetOfExactType<TextButton>() != null) return TextButton;
+  if (context.findAncestorWidgetOfExactType<InkWell>() != null) return InkWell;
+  return null;
 }
 
 void _expectTokens(WidgetTester tester) {
@@ -417,7 +440,7 @@ void main() {
           hasExpandedState: true,
           isExpanded: false,
           hasTapAction: true,
-          onTapHint: _expandKey,
+          hint: _expandKey,
         ),
       );
 
@@ -430,7 +453,7 @@ void main() {
           hasExpandedState: true,
           isExpanded: true,
           hasTapAction: true,
-          onTapHint: _collapseKey,
+          hint: _collapseKey,
         ),
       );
       handle.dispose();
@@ -444,6 +467,30 @@ void main() {
       expect(find.bySemanticsLabel("$_sharing\nMax"), findsOneWidget);
       expect(find.bySemanticsLabel(_unlockKey), findsOneWidget);
       handle.dispose();
+    });
+
+    testWidgets("Tab never visits the hidden CTA while collapsed and reaches it once expanded", (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            _group(),
+            TextButton(onPressed: () {}, child: const Text("Next")),
+          ],
+        ),
+      );
+
+      // Three presses wrap focus back to the header, so every focusable node
+      // is visited once. Reading order is by position and the hidden CTA sits
+      // below "Next", so two presses could not tell a focusable hidden CTA
+      // apart from an excluded one.
+      expect(await _tab(tester, 3), <Type?>[InkWell, TextButton, InkWell]);
+
+      await _expand(tester);
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      expect(await _tab(tester, 3), <Type?>[InkWell, FilledButton, TextButton]);
     });
 
     testWidgets("header and CTA are at least 48 dp tall; tap-target guidelines pass", (WidgetTester tester) async {
@@ -507,7 +554,7 @@ void main() {
               child: SizedBox(
                 width: width,
                 child: _group(
-                  badgeLabel: "Enterprise",
+                  badgeLabel: "Restricted",
                   initiallyExpanded: true,
                   features: const <GatedFeatureEntry>[GatedFeatureEntry(label: label)],
                 ),

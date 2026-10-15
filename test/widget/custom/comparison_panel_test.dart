@@ -4,11 +4,17 @@
 // titles, subtitles), the expanded detail (legend, ComparisonBar rows in the
 // side colours, change callout with emphasised values), the toggle / cancel
 // / confirm callbacks, the disabled confirm, label overrides, the inert
-// header without detail, reduced motion, header semantics, tap targets,
-// long titles at 320 dp in light and dark, and the real fr / en strings
-// through an in-memory EasyLocalization.
+// header without detail, reduced motion, header semantics (focusable
+// button), tap targets, the card / header / divider / chevron colours, long
+// titles at 320 dp in light and dark, and the real fr / en strings through an
+// in-memory EasyLocalization. The localized tests reset the easy_localization
+// singleton, so the raw-key tests pass in any order.
 
 import "package:easy_localization/easy_localization.dart";
+// Localization.load is the only way to empty the translations singleton that
+// EasyLocalization fills; see _pumpLocalized.
+// ignore: implementation_imports
+import "package:easy_localization/src/localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
@@ -161,12 +167,17 @@ final class _MemoryLoader extends AssetLoader {
   }
 }
 
+/// Pumps [child] under EasyLocalization with [loader]. The loaded
+/// translations live in a singleton that outlives the test; the tear-down
+/// empties it so every later `.tr()` returns the raw key again, whatever the
+/// test order.
 Future<void> _pumpLocalized(
   WidgetTester tester,
   Locale locale,
   Widget child, {
   AssetLoader loader = const _MemoryLoader(),
 }) async {
+  addTearDown(() => Localization.load(const Locale("fr")));
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await EasyLocalization.ensureInitialized();
   await tester.pumpWidget(
@@ -197,8 +208,8 @@ void main() {
   _actionTests();
   _semanticsTests();
   _motionTests();
+  _visualTests();
   _layoutTests();
-  // Last: see _localizedTests.
   _localizedTests();
 }
 
@@ -462,6 +473,8 @@ void _semanticsTests() {
           hasExpandedState: true,
           isExpanded: false,
           hasTapAction: true,
+          isFocusable: true,
+          hasFocusAction: true,
         ),
       );
       expect(tester.getSize(_header).height, greaterThanOrEqualTo(48));
@@ -476,7 +489,7 @@ void _semanticsTests() {
 
       expect(
         tester.getSemantics(_header),
-        isSemantics(label: _summaryKey, hint: _hideKey, isButton: true, isExpanded: true),
+        isSemantics(label: _summaryKey, hint: _hideKey, isButton: true, isExpanded: true, isFocusable: true),
       );
       tester.semantics.tap(find.semantics.byLabel(_summaryKey));
       expect(toggles, 1);
@@ -489,7 +502,13 @@ void _semanticsTests() {
 
       expect(
         tester.getSemantics(_header),
-        isSemantics(label: _summaryKey, isButton: false, hasExpandedState: false, hasTapAction: false),
+        isSemantics(
+          label: _summaryKey,
+          isButton: false,
+          hasExpandedState: false,
+          hasTapAction: false,
+          isFocusable: false,
+        ),
       );
       handle.dispose();
     });
@@ -516,6 +535,69 @@ void _motionTests() {
       expect(find.byType(ComparisonBar), findsNWidgets(3));
       expect(tester.widget<AnimatedRotation>(find.byType(AnimatedRotation)).duration, Duration.zero);
       expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+  });
+}
+
+/// The chevron badge's circle (nearest Container above the glyph).
+BoxDecoration _chevronDecoration(WidgetTester tester) {
+  final Finder badge = find.ancestor(of: find.byIcon(Icons.keyboard_arrow_down_rounded), matching: find.byType(Container));
+  return tester.widget<Container>(badge.first).decoration! as BoxDecoration;
+}
+
+Color? _chevronIconColor(WidgetTester tester) {
+  return tester.widget<Icon>(find.byIcon(Icons.keyboard_arrow_down_rounded)).color;
+}
+
+void _visualTests() {
+  group("visual contract", () {
+    testWidgets("card border, header background and detail divider", (WidgetTester tester) async {
+      await _pump(tester, _panel(isExpanded: true));
+      await tester.pumpAndSettle();
+      final ColorScheme cs = _scheme(tester);
+
+      final Material card = tester.widget<Material>(
+        find.descendant(of: find.byType(ComparisonPanel), matching: find.byType(Material)).first,
+      );
+      expect(card.color, cs.surface);
+      expect(card.clipBehavior, Clip.antiAlias);
+      expect(
+        card.shape,
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: cs.tertiary, width: 1.5),
+        ),
+      );
+
+      final Material header = tester.widget<Material>(
+        find.ancestor(of: find.text("Plan A"), matching: find.byType(Material)).first,
+      );
+      expect(header.color, cs.surfaceContainerLow);
+
+      final Finder section = find.ancestor(
+        of: find.byType(ComparisonBar).first,
+        matching: find.byWidgetPredicate((Widget widget) => widget is Container && widget.decoration is BoxDecoration),
+      );
+      final BoxDecoration decoration = tester.widget<Container>(section.first).decoration! as BoxDecoration;
+      expect(decoration.border, Border(top: BorderSide(color: cs.tertiary, width: 0.5)));
+    });
+
+    testWidgets("chevron badge: outlined when collapsed, filled when expanded", (WidgetTester tester) async {
+      await _pump(tester, _panel());
+      final ColorScheme cs = _scheme(tester);
+
+      BoxDecoration badge = _chevronDecoration(tester);
+      expect(badge.color, cs.surface);
+      expect(badge.border, Border.all(color: cs.tertiary));
+      expect(badge.shape, BoxShape.circle);
+      expect(_chevronIconColor(tester), cs.tertiary);
+
+      await _pump(tester, _panel(isExpanded: true));
+      await tester.pumpAndSettle();
+      badge = _chevronDecoration(tester);
+      expect(badge.color, cs.tertiary);
+      expect(badge.border, Border.all(color: cs.tertiary));
+      expect(_chevronIconColor(tester), cs.onTertiary);
     });
   });
 }
@@ -558,8 +640,6 @@ void _layoutTests() {
   });
 }
 
-// Last: EasyLocalization keeps the loaded translations in a singleton, so
-// pumpApp tests that follow would read them instead of the raw keys.
 void _localizedTests() {
   group("localized", () {
     testWidgets("fr strings: buttons, callout, header summary", (WidgetTester tester) async {

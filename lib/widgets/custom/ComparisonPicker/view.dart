@@ -2,7 +2,8 @@
 //
 // Tree of ComparisonPicker: the A / B header (radio mode), the primary rows,
 // then the secondary section (dashed divider, add button, rows or loading
-// placeholder). Picks each row's leading control from the mode.
+// placeholder). Picks each row's leading control from the mode and, in
+// locked-A mode, from the slot the row holds.
 
 part of "index.dart";
 
@@ -45,24 +46,34 @@ mixin _ViewMixin {
         ),
       );
     }
+    final Widget leading = _lockedLeading(item, selected, primary: primary);
     if (primary) {
-      return _PickerRow(
-        item: item,
-        selected: selected,
-        leading: _LockedSlotDot(itemLabel: item.label, locked: selected == _Slot.a),
-      );
+      return _PickerRow(item: item, selected: selected, leading: leading);
     }
     final bool isB = selected == _Slot.b;
     return _PickerRow(
       item: item,
       selected: selected,
-      leading: _SlotDot(slot: _Slot.b, filled: isB),
+      leading: leading,
       toggle: _RowToggle(
         semanticsLabel: _selectLabel(_Slot.b, item.label),
         checked: isB,
         onTap: state.widget.readOnly ? null : () => state._toggle(_Slot.b, item.id),
       ),
     );
+  }
+
+  /// Leading dot of a locked-A row, showing the slot the row holds. The
+  /// primary row stands for slot A, a secondary row for slot B (its toggle
+  /// node carries that state). A row holding the other slot, set through the
+  /// initial slots or kept when [ComparisonPicker.primary] shrank to one
+  /// item, gets a checked, disabled node for it: the dot's letter and that
+  /// node, not the row tint alone, tell which slot it holds.
+  Widget _lockedLeading(ComparisonPickerItem item, _Slot? selected, {required bool primary}) {
+    final _Slot own = primary ? _Slot.a : _Slot.b;
+    if (selected == null) return _SlotDot(slot: own, filled: false);
+    if (selected != own) return _HeldSlotDot(slot: selected, semanticsLabel: _selectLabel(selected, item.label));
+    return primary ? _LockedSlotDot(itemLabel: item.label) : const _SlotDot(slot: _Slot.b, filled: true);
   }
 
   /// Radio of [slot] on [item]'s row. Disabled in read-only mode and when

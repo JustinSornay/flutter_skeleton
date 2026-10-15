@@ -52,14 +52,14 @@ mixin _ViewMixin {
     );
   }
 
-  /// Host override when set, else the built-in key for the current state.
+  /// Host override when non-empty, else the built-in key for the current
+  /// state (show_all gets the total item count as `{count}`).
   String _toggleLabel(RankedBadgeList widget, bool isExpanded) {
-    if (isExpanded) {
-      return widget.showLessLabel ?? "custom.ranked_badge_list.show_less".tr();
-    }
-    return widget.showAllLabel ??
-        "custom.ranked_badge_list.show_all".tr(
-          namedArgs: <String, String>{"count": "${widget.items.length}"},
-        );
+    final String? override = isExpanded ? widget.showLessLabel : widget.showAllLabel;
+    if (override != null && override.isNotEmpty) return override;
+    if (isExpanded) return "custom.ranked_badge_list.show_less".tr();
+    return "custom.ranked_badge_list.show_all".tr(
+      namedArgs: <String, String>{"count": "${widget.items.length}"},
+    );
   }
 }

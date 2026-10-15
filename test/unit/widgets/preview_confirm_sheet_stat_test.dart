@@ -2,20 +2,21 @@
 //
 // Unit tests for PreviewStat (PreviewConfirmSheet value class): constructor
 // defaults and the PreviewStat.delta factory (epsilon, sign, tone,
-// higherIsBetter, fractionDigits, semanticsLabel).
+// higherIsBetter, fractionDigits, caption, semanticsLabel).
 
 import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/custom/PreviewConfirmSheet/index.dart";
 import "package:flutter_test/flutter_test.dart";
 
 void main() {
-  test("the default constructor is untoned, not tinted, without a semantics label", () {
+  test("the default constructor is untoned, not tinted, without a caption or semantics label", () {
     const PreviewStat stat = PreviewStat(label: "Now", value: "0.72");
 
     expect(stat.label, "Now");
     expect(stat.value, "0.72");
     expect(stat.tone, isNull);
     expect(stat.tinted, isFalse);
+    expect(stat.caption, isNull);
     expect(stat.semanticsLabel, isNull);
   });
 
@@ -71,6 +72,12 @@ void main() {
       expect(PreviewStat.delta(label: "Change", delta: 0.4, epsilon: 0.5).value, "=");
       expect(PreviewStat.delta(label: "Change", delta: 0.5, epsilon: 0.5).value, "+0.50");
       expect(PreviewStat.delta(label: "Change", delta: 0.001, epsilon: 0.0001).value, "+0.00");
+    });
+
+    test("caption is passed through", () {
+      expect(PreviewStat.delta(label: "Change", delta: -0.05, caption: "Worse").caption, "Worse");
+      expect(PreviewStat.delta(label: "Change", delta: 0, caption: "Same").caption, "Same");
+      expect(PreviewStat.delta(label: "Change", delta: 0.05).caption, isNull);
     });
 
     test("semanticsLabel is passed through", () {

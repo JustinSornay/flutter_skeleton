@@ -35,14 +35,15 @@ final class ScoreListEntry {
   /// Optional italic secondary text next to the title. Null or empty hides it.
   final String? subtitle;
 
-  /// Normalised score. The bar value is clamped to `[0, 1]` (NaN draws an
-  /// empty bar).
+  /// Normalised score. The bar value is clamped to `[0, 1]`; a non-finite
+  /// score (NaN, ±infinity) draws an empty bar, matching its `"—"` label.
   final double score;
 
   /// Text to the right of the bar. Null → `(score * 100).round()` (e.g.
   /// `0.734` → `"73"`, unclamped), or `"—"` when [score] is not finite.
-  /// Keep it short: it sits in a 32–96 dp slot (one line) and is ellipsised
-  /// beyond that.
+  /// Keep it short: every row's score slot takes the width of the card's
+  /// widest label (32–96 dp, one line), so a long label shortens every bar
+  /// track alike; beyond 96 dp it is ellipsised.
   final String? scoreLabel;
 
   /// Optional short caption under the bar; it wraps (friendlier to text
@@ -69,8 +70,8 @@ final class ScoreListEntry {
     this.semanticLabel,
   });
 
-  /// [score] clamped to `[0, 1]`, NaN → 0.
-  double get _ratio => score.isNaN ? 0 : score.clamp(0.0, 1.0);
+  /// [score] clamped to `[0, 1]`, non-finite → 0.
+  double get _ratio => score.isFinite ? score.clamp(0.0, 1.0) : 0;
 
   /// [scoreLabel], else the rounded percentage of [score].
   String get _scoreText {
@@ -107,7 +108,9 @@ final class ScoreListEntry {
 /// Layout: a `cs.surfaceContainerHigh` card with radius 12 and 16 dp padding,
 /// which hugs its content. The rows do not scroll, so keep the list short (a
 /// top-N). The card needs a bounded width. Every row is at least
-/// [kMinTapTarget] tall.
+/// [kMinTapTarget] tall. All rows share one score slot, as wide as the widest
+/// score text (32–96 dp), so every bar track has the same length and the bars
+/// stay comparable at any text scale.
 ///
 /// No overlay is used, so the widget works anywhere in the tree, including
 /// `Layout`.

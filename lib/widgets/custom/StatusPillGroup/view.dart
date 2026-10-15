@@ -4,10 +4,13 @@
 // load state: a centred Loader in a one-row slot, a live-region neutral
 // failure pill, nothing for an empty list, or the items as StatusPill widgets
 // in a Wrap (items with an empty label are skipped, so they leave no gap).
+// The failure pill sits in a Wrap too, so it keeps its own width like the
+// loaded pills even under a tight parent width.
 
 part of "index.dart";
 
-/// Height of the loading slot: one default StatusPill row (32 dp).
+/// Height of the loading slot: one default StatusPill row at the default
+/// text scale (32 dp).
 const double _rowHeight = kDefaultPadding * 4;
 
 /// Diameter of the loading indicator (16 dp).
@@ -20,12 +23,16 @@ mixin _ViewMixin {
           height: _rowHeight,
           child: Center(child: Loader(size: _loaderSize)),
         ),
-      LoadError<List<StatusPillGroupItem>>() => Semantics(
-          liveRegion: true,
-          child: StatusPill(
-            label: state.widget.errorLabel ?? "custom.status_pill_group.unavailable".tr(),
-            icon: Icons.error_outline,
-          ),
+      LoadError<List<StatusPillGroupItem>>() => Wrap(
+          children: <Widget>[
+            Semantics(
+              liveRegion: true,
+              child: StatusPill(
+                label: state.widget.errorLabel ?? "custom.status_pill_group.unavailable".tr(),
+                icon: Icons.error_outline,
+              ),
+            ),
+          ],
         ),
       Loaded<List<StatusPillGroupItem>>(:final List<StatusPillGroupItem> data) when data.isEmpty =>
         const SizedBox.shrink(),

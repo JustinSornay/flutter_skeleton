@@ -1,9 +1,11 @@
 // teaser.dart
 //
 // Private teaser of FeatureGate (GateDisplayMode.teaser): a blurred,
-// dimmed, non-interactive mock (the host's builder or a generic placeholder
-// of a label and two bars) under a blurred cs.scrim, with a centred pill
-// (badge + label). It never builds the gate's real child.
+// dimmed mock (the host's builder or a generic placeholder of a label and
+// two bars), out of reach of pointer, keyboard focus and screen readers,
+// under a blurred cs.scrim, with a centred pill (badge + label). The pill
+// takes part in sizing, so the teaser is never shorter than it. It never
+// builds the gate's real child.
 
 part of "../index.dart";
 
@@ -22,7 +24,8 @@ const double _pillShadowAlpha = 0.06;
 /// Corner radius of the teaser and of its pill.
 const double _teaserRadius = 12;
 
-/// Minimum teaser height, so the pill always fits.
+/// Minimum teaser height: a margin around the pill over a tiny mock. The
+/// pill itself sizes the teaser when it is taller (large text scales).
 const double _teaserMinHeight = kDefaultPadding * 6;
 
 /// Width factor of the placeholder's second bar.
@@ -49,16 +52,22 @@ final class _Teaser extends StatelessWidget {
       borderRadius: BorderRadius.circular(_teaserRadius),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: _teaserMinHeight),
+        // Non-positioned children size the Stack: the teaser is as tall as
+        // the taller of the mock and the pill, and the scrim covers both.
         child: Stack(
+          alignment: Alignment.center,
           children: <Widget>[
             // The SizedBox makes the teaser fill the parent's width.
             SizedBox(
               width: double.infinity,
+              // Inert for pointer, screen readers and keyboard focus (Tab).
               child: IgnorePointer(
                 child: ExcludeSemantics(
-                  child: ImageFiltered(
-                    imageFilter: ui.ImageFilter.blur(sigmaX: _previewBlur, sigmaY: _previewBlur),
-                    child: Opacity(opacity: _dimmedOpacity, child: preview),
+                  child: ExcludeFocus(
+                    child: ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(sigmaX: _previewBlur, sigmaY: _previewBlur),
+                      child: Opacity(opacity: _dimmedOpacity, child: preview),
+                    ),
                   ),
                 ),
               ),
@@ -69,7 +78,7 @@ final class _Teaser extends StatelessWidget {
                 child: ColoredBox(color: cs.scrim.withValues(alpha: _scrimAlpha)),
               ),
             ),
-            Positioned.fill(child: Center(child: _pill(context, cs))),
+            _pill(context, cs),
           ],
         ),
       ),

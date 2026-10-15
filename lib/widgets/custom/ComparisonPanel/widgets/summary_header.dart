@@ -4,7 +4,8 @@
 // side, the central swap badge, the candidate side and, when the panel has
 // detail to show, the rotating chevron badge. One semantics node that reads
 // "{current} compared with {candidate}" and, when tappable, exposes a button
-// with an expanded state.
+// with an expanded state; the InkWell supplies its tap and focus semantics,
+// the visible content is excluded so it is not read twice.
 
 part of "../index.dart";
 
@@ -41,14 +42,14 @@ final class _SummaryHeader extends StatelessWidget {
     final VoidCallback? onToggle = this.onToggle;
     final bool toggleable = onToggle != null;
 
+    // No excludeSemantics / onTap here: the InkWell merges its tap, focus and
+    // enabled semantics into this node, so keyboard focus is announced.
     return Semantics(
       container: true,
-      excludeSemantics: true,
       button: toggleable,
       expanded: toggleable ? isExpanded : null,
       label: _summaryLabel(),
       hint: toggleable ? _hint() : null,
-      onTap: onToggle,
       child: Material(
         color: cs.surfaceContainerLow,
         child: InkWell(
@@ -60,23 +61,29 @@ final class _SummaryHeader extends StatelessWidget {
                 horizontal: kDefaultPadding * 1.5,
                 vertical: kDefaultPadding * 1.25,
               ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(child: _SideSummary(side: current, color: cs.primary, alignEnd: false)),
-                  const SizedBox(width: kDefaultPadding * 1.25),
-                  _SwapBadge(icon: icon),
-                  const SizedBox(width: kDefaultPadding * 1.25),
-                  Expanded(child: _SideSummary(side: candidate, color: cs.tertiary, alignEnd: true)),
-                  if (toggleable) ...<Widget>[
-                    const SizedBox(width: kDefaultPadding),
-                    _ChevronBadge(isExpanded: isExpanded),
-                  ],
-                ],
-              ),
+              // Already read through the summary label.
+              child: ExcludeSemantics(child: _content(cs, toggleable)),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Sides, swap badge and, when [toggleable], the chevron badge.
+  Widget _content(ColorScheme cs, bool toggleable) {
+    return Row(
+      children: <Widget>[
+        Expanded(child: _SideSummary(side: current, color: cs.primary, alignEnd: false)),
+        const SizedBox(width: kDefaultPadding * 1.25),
+        _SwapBadge(icon: icon),
+        const SizedBox(width: kDefaultPadding * 1.25),
+        Expanded(child: _SideSummary(side: candidate, color: cs.tertiary, alignEnd: true)),
+        if (toggleable) ...<Widget>[
+          const SizedBox(width: kDefaultPadding),
+          _ChevronBadge(isExpanded: isExpanded),
+        ],
+      ],
     );
   }
 
