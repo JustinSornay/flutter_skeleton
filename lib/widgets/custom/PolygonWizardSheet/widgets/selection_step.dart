@@ -1,11 +1,12 @@
 // selection_step.dart
 //
 // _SelectionStep — the selection step of PolygonWizardSheet. Single mode:
-// the host's picker, then a _BusyIndicator while the pick resolves, then
-// the picked item as an EditableValueRow card (tap to pick again). Multi
-// mode: the header, an AnimatedSize band of removable chips with a count, a
-// _ProgressLine while a pick resolves and the host's picker, which stays
-// mounted across picks. A failed pick shows an inline error.
+// the header above the host's picker, then above a _BusyIndicator while the
+// pick resolves, then the picked item as an EditableValueRow card (tap to
+// pick again). Multi mode: the header, an AnimatedSize band of removable
+// chips with a count, a _ProgressLine while a pick resolves and the host's
+// picker, which stays mounted across picks. A failed pick shows an inline
+// error.
 
 part of "../index.dart";
 
@@ -26,12 +27,15 @@ final class _SelectionStep extends StatelessWidget {
     if (state.widget.allowMultipleSelections) return _multiple(context);
     final PolygonFormSelection? selected = state.selections.firstOrNull;
     if (selected != null) return _card(context, selected);
-    if (state.resolving) return const Center(child: _BusyIndicator());
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         _header(),
-        Expanded(child: _picker()),
+        Expanded(
+          child: state.resolving
+              ? const Center(child: _BusyIndicator())
+              : _picker(),
+        ),
       ],
     );
   }

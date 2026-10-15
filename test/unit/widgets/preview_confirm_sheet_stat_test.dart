@@ -2,7 +2,8 @@
 //
 // Unit tests for PreviewStat (PreviewConfirmSheet value class): constructor
 // defaults and the PreviewStat.delta factory (epsilon, sign, tone,
-// higherIsBetter, fractionDigits, caption, semanticsLabel).
+// higherIsBetter, fractionDigits, caption, semanticsLabel, and the asserts
+// on epsilon and fractionDigits).
 
 import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/custom/PreviewConfirmSheet/index.dart";
@@ -72,6 +73,28 @@ void main() {
       expect(PreviewStat.delta(label: "Change", delta: 0.4, epsilon: 0.5).value, "=");
       expect(PreviewStat.delta(label: "Change", delta: 0.5, epsilon: 0.5).value, "+0.50");
       expect(PreviewStat.delta(label: "Change", delta: 0.001, epsilon: 0.0001).value, "+0.00");
+    });
+
+    test("a zero or negative epsilon is rejected (a zero change must stay '=')", () {
+      for (final double epsilon in <double>[0, -0.005, double.nan]) {
+        expect(
+          () => PreviewStat.delta(label: "Change", delta: 0, epsilon: epsilon),
+          throwsAssertionError,
+          reason: "epsilon $epsilon",
+        );
+      }
+    });
+
+    test("fractionDigits outside 0..20 is rejected; the bounds are accepted", () {
+      for (final int digits in <int>[-1, 21]) {
+        expect(
+          () => PreviewStat.delta(label: "Change", delta: 0.05, fractionDigits: digits),
+          throwsAssertionError,
+          reason: "fractionDigits $digits",
+        );
+      }
+      expect(PreviewStat.delta(label: "Change", delta: 3, fractionDigits: 0).value, "+3");
+      expect(PreviewStat.delta(label: "Change", delta: 0.05, fractionDigits: 20).tone, StatusTone.success);
     });
 
     test("caption is passed through", () {

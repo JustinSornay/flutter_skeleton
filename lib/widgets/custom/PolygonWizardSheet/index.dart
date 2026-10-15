@@ -14,6 +14,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:easy_localization/easy_localization.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
 import "package:flutter_skeleton/utils/load_state.dart";
@@ -97,7 +98,7 @@ final class PolygonSuggestion {
   final String label;
 
   /// Vertices in polygon order. A suggestion with fewer than 3 points is
-  /// shown but ignored on tap.
+  /// shown disabled.
   final List<LatLng> points;
 
   const PolygonSuggestion({
@@ -150,6 +151,11 @@ typedef PolygonWizardPickerBuilder =
 /// Persists the polygon. [result] carries the resolved name, the vertices
 /// and the first selection; [selections] holds every selection in pick
 /// order (empty without a selection step).
+///
+/// Unlike PolygonFormSheet's, `result.name` is filled with a fallback when
+/// nothing was typed: the first selection's title, else the sheet's
+/// `fallbackName`, else the `default_name` key. Each is used as given, so a
+/// blank title or a blank `fallbackName` gives a blank name.
 typedef PolygonWizardSubmit =
     Future<void> Function(
       PolygonFormResult result,
@@ -171,13 +177,18 @@ typedef PolygonWizardSubmit =
 ///   provide some, chips that import a previously drawn polygon (tap the
 ///   imported chip again to clear it). Next needs 3 or more vertices and no
 ///   crossing or touching edges; crossing edges show an inline hint.
-///   Coming back to this step fits the camera to the polygon.
+///   A map tap or vertex drag still under way when the step is left is
+///   undone. Coming back to this step fits the camera to the polygon. On a
+///   short sheet the map keeps 160 dp (half the step when the step is
+///   shorter than 320 dp), undo / reset and the crossing hint stay pinned
+///   above it, and the suggestion rows and the step header scroll.
 /// - `selection`: the host's picker ([pickerBuilder]). A pick is resolved
 ///   with [loadSelection], which also receives the centroid of the polygon
 ///   ([initialCenter] while there is none). With
-///   [allowMultipleSelections] false the picker gives way to a [Loader]
-///   (static under reduced motion), then to the picked item as an
-///   [EditableValueRow] card; tapping the card goes back to the picker. With
+///   [allowMultipleSelections] false the picker (under the step header)
+///   gives way to a [Loader] (static under reduced motion), then to the
+///   picked item as an [EditableValueRow] card; tapping the card goes back
+///   to the picker. With
 ///   it true the picker stays mounted under a band of removable chips, and a
 ///   thin progress line (static under reduced motion) shows while a pick
 ///   resolves; picking an id already selected or still resolving does
@@ -198,8 +209,10 @@ typedef PolygonWizardSubmit =
 /// first selection's title, else [fallbackName]; the vertices (3 or more, no
 /// crossing edges); and the first selection (null without a selection
 /// step). While [onSubmit] runs and after it succeeds the sheet is locked:
-/// the map, undo / reset, the suggestion chips, the name field, the
-/// selections and Back ignore input. On success the button shows its label
+/// the map, undo / reset, the suggestion chips (shown disabled), the name
+/// field, the selections and Back ignore input, and a map tap or vertex
+/// drag already under way is undone, so the map keeps showing the
+/// submitted polygon. On success the button shows its label
 /// again, disabled, and the sheet calls [onSubmitted], unless its route is
 /// no longer the current one; the host closes the sheet. On failure the
 /// error is logged, an inline error (live region) shows [submitErrorText]

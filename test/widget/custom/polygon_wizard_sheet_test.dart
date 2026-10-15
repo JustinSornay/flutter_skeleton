@@ -4,14 +4,15 @@
 // the step indicator and its semantics, the name step (Next gating,
 // initialName skip), the polygon step (drawing through the composed
 // MapPolygonEditor, undo / reset, the PillBadge counter, crossing edges,
-// camera fit on return), suggestion rows (import / clear, un-marked when
-// the polygon empties, async load, failure, host rebuilds), the selection
-// step in single mode (Loader, EditableValueRow card, centroid, failure
-// cleared by a step change) and multi mode (chips, picker State kept,
-// duplicates and in-flight picks, removal), the summary card, the submit
-// lifecycle (result payload, name fallbacks, double-submit guard, inline
-// error, no spinner after success), the lock while submitting (map, tools,
-// chips, name field, a racing chip removal), hosting in a modal bottom sheet
+// camera fit on return, short sheets, a late map tap after Next),
+// suggestion rows (import / clear, un-marked when the polygon empties,
+// async load, failure, host rebuilds), the selection step in single mode
+// (Loader, EditableValueRow card, centroid, failure cleared by a step
+// change) and multi mode (chips, picker State kept, duplicates and
+// in-flight picks, removal), the summary card, the submit lifecycle
+// (result payload, name fallbacks, double-submit guard, inline error, no
+// spinner after success), the lock while submitting (map, tools, chips,
+// name field, a racing chip removal), hosting in a modal bottom sheet
 // (close on success, vertex drags never drag the sheet, no close from a
 // route already closing), reduced motion, tap targets, step-list asserts
 // and the dark theme. Tiles come from an in-memory TileProvider, so no
@@ -81,6 +82,14 @@ const List<Offset> _kBowTie = <Offset>[
   Offset(-80, 80),
 ];
 
+/// A bow-tie flat enough for the map of a short sheet.
+const List<Offset> _kFlatBowTie = <Offset>[
+  Offset(-80, -40),
+  Offset(80, 40),
+  Offset(80, -40),
+  Offset(-80, 40),
+];
+
 /// A small square far from the default camera centre.
 const List<LatLng> _kSquare = <LatLng>[
   LatLng(45, 5),
@@ -105,6 +114,17 @@ const List<PolygonSuggestionGroup> _kRecent = <PolygonSuggestionGroup>[
   PolygonSuggestionGroup(
     title: "Recent",
     suggestions: <PolygonSuggestion>[_kSquareSuggestion, _kShortSuggestion],
+  ),
+];
+
+/// Two rows of suggestions: the tallest panel above the map.
+const List<PolygonSuggestionGroup> _kTwoRows = <PolygonSuggestionGroup>[
+  ..._kRecent,
+  PolygonSuggestionGroup(
+    title: "Previous",
+    suggestions: <PolygonSuggestion>[
+      PolygonSuggestion(id: "other", label: "Other", points: _kSquare),
+    ],
   ),
 ];
 
@@ -341,8 +361,9 @@ Future<void> _pump(
   WidgetTester tester,
   _Wizard wizard, {
   ThemeData? theme,
+  Size surfaceSize = _kSurface,
 }) async {
-  await pumpApp(tester, wizard.build(), surfaceSize: _kSurface, theme: theme);
+  await pumpApp(tester, wizard.build(), surfaceSize: surfaceSize, theme: theme);
   await tester.pump();
 }
 
@@ -444,6 +465,18 @@ List<Color?> _segmentColors(WidgetTester tester) {
 
 ColorScheme _scheme(WidgetTester tester) {
   return Theme.of(tester.element(find.byType(PolygonWizardSheet))).colorScheme;
+}
+
+/// Whether [finder] lies whole inside its scroll view and above the map.
+bool _shownAboveMap(WidgetTester tester, Finder finder) {
+  final Rect rect = tester.getRect(finder);
+  final Rect viewport = tester.getRect(
+    find.ancestor(of: finder, matching: find.byType(Scrollable)).first,
+  );
+  final double mapTop = tester.getRect(find.byType(MapPolygonEditor)).top;
+  return rect.top >= viewport.top &&
+      rect.bottom <= viewport.bottom &&
+      rect.bottom <= mapTop;
 }
 
 /// Name "  North  ", the square, item "a": lands on the summary of a
@@ -711,6 +744,110 @@ void _polygonStepTests() {
       expect((first - third).distance, greaterThan(100));
       expect(map.contains(first) && map.contains(third), isTrue);
     });
+
+    testWidgets("on a short sheet the rows scroll and the map keeps its room", (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        _Wizard(<PolygonWizardStepKind>[
+          _kPolygon,
+          _kSummary,
+        ], suggestions: _kTwoRows),
+        surfaceSize: const Size(700, 420),
+      );
+      expect(tester.takeException(), isNull);
+      // The step is about 300 dp tall: half of it goes to the map.
+      expect(
+        tester.getSize(find.byType(MapPolygonEditor)).height,
+        greaterThanOrEqualTo(140),
+      );
+
+      // A flatter triangle that fits the short map.
+      await _draw(tester, const <Offset>[
+        Offset(-80, -40),
+        Offset(80, -40),
+        Offset(0, 40),
+      ]);
+      expect(_vertexCount(), 3);
+      // The rows scroll; the tools stay pinned above the map.
+      expect(_shownAboveMap(tester, find.text(_kUndo)), isTrue);
+      await tester.tap(find.text(_kUndo));
+      await tester.pump();
+      expect(_vertexCount(), 2);
+    });
+
+    testWidgets("on a short sheet the crossing hint and the tools stay shown", (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        _Wizard(<PolygonWizardStepKind>[
+          _kPolygon,
+          _kSummary,
+        ], suggestions: _kTwoRows),
+        surfaceSize: const Size(700, 600),
+      );
+      await _draw(tester, _kFlatBowTie);
+      expect(_vertexCount(), 4);
+      expect(_nextEnabled(tester), isFalse);
+      expect(_shownAboveMap(tester, find.text(_kCrossing)), isTrue);
+      expect(_shownAboveMap(tester, find.text(_kUndo)), isTrue);
+      // The header stays next to the tools; the rows give way first.
+      expect(_shownAboveMap(tester, find.text("Hint polygon")), isTrue);
+
+      await tester.tap(find.text(_kUndo));
+      await tester.pump();
+      expect(_vertexCount(), 3);
+      expect(find.text(_kCrossing), findsNothing);
+      expect(_nextEnabled(tester), isTrue);
+    });
+
+    testWidgets("on a tiny sheet the crossing hint stays above the map", (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        _Wizard(<PolygonWizardStepKind>[
+          _kPolygon,
+          _kSummary,
+        ], suggestions: _kTwoRows),
+        surfaceSize: const Size(700, 330),
+      );
+      await _draw(tester, _kFlatBowTie);
+      expect(tester.takeException(), isNull);
+      expect(_vertexCount(), 4);
+      // The tools alone exceed the room: they scroll, the hint stays.
+      expect(_shownAboveMap(tester, find.text(_kCrossing)), isTrue);
+    });
+
+    testWidgets("a map tap landing after Next left the step is undone", (
+      WidgetTester tester,
+    ) async {
+      final _Wizard wizard = _Wizard(<PolygonWizardStepKind>[
+        _kPolygon,
+        _kSummary,
+      ]);
+      await _pump(tester, wizard);
+      await _draw(tester, _kTriangle);
+
+      // flutter_map delivers this crossing 4th vertex 250 ms after the finger
+      // lifts: after Next, to the editor the step cross-fade still shows.
+      await tester.tapAt(
+        tester.getCenter(find.byType(MapPolygonEditor)) + const Offset(0, -110),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await _tapNext(tester);
+      expect(find.byType(MapPolygonEditor), findsNothing);
+      expect(_nextEnabled(tester), isTrue);
+
+      await _tapBack(tester);
+      expect(_vertexCount(), 3);
+      expect(find.text(_kCrossing), findsNothing);
+      await _tapNext(tester);
+      await _tapNext(tester);
+      expect(wizard.submit.calls.single.$1.points, hasLength(3));
+    });
   });
 }
 
@@ -733,6 +870,8 @@ void _suggestionTests() {
         matchesSemantics(
           label: "Square",
           isButton: true,
+          hasEnabledState: true,
+          isEnabled: true,
           hasSelectedState: true,
           isSelected: true,
           isFocusable: true,
@@ -772,13 +911,29 @@ void _suggestionTests() {
       expect(_vertexCount(), 4);
     });
 
-    testWidgets("a suggestion with fewer than 3 points is ignored", (
+    testWidgets("a suggestion with fewer than 3 points is disabled", (
       WidgetTester tester,
     ) async {
       await _pump(
         tester,
         _Wizard(<PolygonWizardStepKind>[_kPolygon, _kSummary]),
       );
+      expect(
+        tester.getSemantics(find.text("Short")),
+        isSemantics(
+          label: "Short",
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: false,
+          hasTapAction: false,
+        ),
+      );
+      final Text label = tester.widget<Text>(find.text("Short"));
+      expect(
+        label.style?.color,
+        _scheme(tester).onSurface.withValues(alpha: 0.38),
+      );
+
       await tester.tap(find.text("Short"));
       await _settle(tester);
       expect(_vertexCount(), 0);
@@ -909,6 +1064,8 @@ void _singleSelectionTests() {
         ]);
         expect(find.byType(Loader), findsOneWidget);
         expect(find.text("Item a"), findsNothing);
+        // The header stays above the indicator.
+        expect(find.text("Hint selection"), findsOneWidget);
         expect(_nextEnabled(tester), isFalse);
 
         wizard.load.pending["a"]!.complete(_selection("a"));
@@ -1149,6 +1306,30 @@ void _summaryTests() {
       expect(find.text("Title a, Title b"), findsOneWidget);
     });
 
+    testWidgets("a long label is ellipsized instead of overflowing", (
+      WidgetTester tester,
+    ) async {
+      const String long = "A rather long name label that a host might pass in";
+      await _pump(
+        tester,
+        _Wizard(
+          <PolygonWizardStepKind>[_kPolygon, _kSummary],
+          initialName: "North",
+          nameLabel: long,
+        ),
+        surfaceSize: const Size(360, 800),
+      );
+      await _importSquare(tester);
+      await _tapNext(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text("North"), findsOneWidget);
+      final Text label = tester.widget<Text>(find.text(long));
+      expect(label.maxLines, 1);
+      expect(label.overflow, TextOverflow.ellipsis);
+      expect(tester.getSize(find.text(long)).width, lessThan(360 * 0.4));
+    });
+
     testWidgets("leaves out the rows without data", (
       WidgetTester tester,
     ) async {
@@ -1331,6 +1512,10 @@ void _lockTests() {
 
       expect(_tool(tester, _kUndo).onPressed, isNull);
       expect(_tool(tester, _kReset).onPressed, isNull);
+      expect(
+        tester.getSemantics(find.text("Square")),
+        isSemantics(label: "Square", isEnabled: false, isSelected: true),
+      );
       await _expectDrawingLocked(tester);
 
       wizard.submit.pending!.complete();
@@ -1383,6 +1568,51 @@ void _lockTests() {
 
       expect(wizard.submit.calls, hasLength(1));
       expect(find.text("Title a"), findsOneWidget);
+    });
+
+    testWidgets("an undo racing the submit tap is ignored", (
+      WidgetTester tester,
+    ) async {
+      final _Wizard wizard = _Wizard(<PolygonWizardStepKind>[_kPolygon])
+        ..submit.pending = Completer<void>();
+      await _pump(tester, wizard);
+      await _importSquare(tester);
+
+      // Two fingers lifted in the same frame: undo still holds its callback.
+      final TestGesture undo = await tester.startGesture(
+        tester.getCenter(find.text(_kUndo)),
+      );
+      final TestGesture submit = await tester.startGesture(
+        tester.getCenter(_nextButton),
+      );
+      await submit.up();
+      await undo.up();
+      await _settle(tester);
+
+      expect(wizard.submit.calls.single.$1.points, _kSquare);
+      expect(_vertexCount(), 4);
+    });
+
+    testWidgets("a map tap landing after the submit is undone", (
+      WidgetTester tester,
+    ) async {
+      final _Wizard wizard = _Wizard(<PolygonWizardStepKind>[_kPolygon])
+        ..submit.pending = Completer<void>();
+      await _pump(tester, wizard);
+      await _draw(tester, _kTriangle);
+
+      // flutter_map delivers a map tap 250 ms after the finger lifts, so this
+      // vertex arrives after the submit below has captured the triangle.
+      await tester.tapAt(
+        tester.getCenter(find.byType(MapPolygonEditor)) +
+            const Offset(-100, 60),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(_nextButton);
+      await _settle(tester);
+
+      expect(wizard.submit.calls.single.$1.points, hasLength(3));
+      expect(_vertexCount(), 3);
     });
   });
 }

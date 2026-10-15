@@ -8,6 +8,8 @@
 // crossing check on every vertex change. Step completeness comes from
 // PolygonWizardRules. Every input handler checks [busy] itself: a tap that
 // lands in the frame where a submit starts still holds its old callback.
+// While busy, and while another step is shown, the drawing is held at the
+// submitted vertices, or at those drawn when the polygon step was left.
 
 part of "index.dart";
 
@@ -48,6 +50,11 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
   /// LoadError (inline error).
   LoadState<void> submission = const Idle<void>();
 
+  /// Vertices the drawing is held at while [_drawingHeld]: those handed to
+  /// the last [PolygonWizardSheet.onSubmit], or those drawn when the polygon
+  /// step was left.
+  List<LatLng> _heldPoints = const <LatLng>[];
+
   /// The step shown.
   PolygonWizardStep get currentStep => widget.steps[step];
 
@@ -71,6 +78,11 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
   /// True while [PolygonWizardSheet.onSubmit] runs and after it succeeded:
   /// the sheet ignores input.
   bool get busy => submitting || submission is Loaded<void>;
+
+  /// True while the drawing must keep [_heldPoints]: while [busy], and while
+  /// the polygon step is not the one shown.
+  bool get _drawingHeld =>
+      busy || currentStep.kind != PolygonWizardStepKind.polygon;
 
   /// Whether the drawing is a submittable polygon: 3 or more vertices and no
   /// crossing edges.
@@ -134,6 +146,16 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
 
   void _onPolygonChanged() {
     if (!mounted) return;
+    if (_drawingHeld && !listEquals(polygon.points, _heldPoints)) {
+      // flutter_map delivers a map tap 250 ms after the finger lifts, and a
+      // drag that started before the lock keeps its pointer: such a change
+      // can still land after the submit captured the vertices, or after Next
+      // left the step (the step cross-fade keeps the outgoing editor
+      // mounted). Put the held polygon back (load() notifies again, with
+      // equal points).
+      polygon.load(_heldPoints);
+      return;
+    }
     setState(() {
       edgesCross = PolygonWizardRules.hasCrossingEdges(polygon.points);
       if (polygon.isEmpty) importedId = null;
@@ -157,13 +179,25 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
     }
   }
 
+  /// Removes the last vertex (the undo button).
+  void undoVertex() {
+    if (_drawingHeld) return;
+    polygon.undo();
+  }
+
+  /// Removes every vertex (the reset button).
+  void resetPolygon() {
+    if (_drawingHeld) return;
+    polygon.reset();
+  }
+
   /// Rebuilds after the name field changed (Next gating).
   void onNameChanged(String _) => setState(() {});
 
   /// Imports [suggestion] into the editor, or clears the polygon when it is
   /// the imported one. Suggestions with fewer than 3 points are ignored.
   void toggleSuggestion(PolygonSuggestion suggestion) {
-    if (busy) return;
+    if (_drawingHeld) return;
     if (importedId == suggestion.id) {
       polygon.reset();
       setState(() => importedId = null);
@@ -249,6 +283,10 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
 
   void _goTo(int index) {
     setState(() {
+      // Leaving the polygon step: hold the drawing as it is now.
+      if (currentStep.kind == PolygonWizardStepKind.polygon) {
+        _heldPoints = polygon.points;
+      }
       step = index;
       selectionFailed = false;
       if (submission.hasError) submission = const Idle<void>();
@@ -275,6 +313,7 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
         widget.fallbackName ?? "custom.polygon_wizard_sheet.default_name".tr(),
       ),
     );
+    _heldPoints = result.points;
     setState(() => submission = const Loading<void>());
     try {
       await widget.onSubmit(result, picked);

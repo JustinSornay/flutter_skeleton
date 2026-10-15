@@ -4,12 +4,16 @@
 // (16 dp title) above a bordered card (cs.surfaceContainerLowest,
 // cs.outlineVariant) with one row per available datum: the typed name, the
 // selected titles joined with ", " and the vertex count. Each _SummaryRow is
-// one semantics node.
+// one semantics node; its label is ellipsized past _kLabelWidthFactor of the
+// row, the value takes the rest.
 
 part of "../index.dart";
 
 /// Summary card corner radius.
 const double _kSummaryRadius = 12;
+
+/// Widest a summary row label grows, as a fraction of the row.
+const double _kLabelWidthFactor = 0.4;
 
 final class _SummaryStep extends StatelessWidget {
   final _PolygonWizardSheetState state;
@@ -112,33 +116,44 @@ final class _SummaryRow extends StatelessWidget {
           horizontal: kDefaultPadding * 2,
           vertical: kDefaultPadding * 1.5,
         ),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, size: 16, color: cs.primary),
-            const SizedBox(width: kDefaultPadding),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 12,
-                color: cs.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: kDefaultPadding * 2),
-            Expanded(
-              child: Text(
-                value,
-                textAlign: TextAlign.end,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface,
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) => Row(
+            children: <Widget>[
+              Icon(icon, size: 16, color: cs.primary),
+              const SizedBox(width: kDefaultPadding),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: constraints.maxWidth * _kLabelWidthFactor,
+                ),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 12,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: kDefaultPadding * 2),
+              Expanded(child: _value(theme)),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _value(ThemeData theme) {
+    return Text(
+      value,
+      textAlign: TextAlign.end,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: theme.colorScheme.onSurface,
       ),
     );
   }

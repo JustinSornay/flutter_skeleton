@@ -100,7 +100,7 @@ final class _RankedListPanelRow<T> extends StatelessWidget {
   Widget _rank(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(right: _rankGap),
+      padding: const EdgeInsetsDirectional.only(end: _rankGap),
       child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: _rankMinWidth - _rankGap),
         child: Text(

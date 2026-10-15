@@ -4,7 +4,8 @@
 // subtitle (hidden, italic), the image header (placeholder, loaded image,
 // failed image, semantics), the stat pills (composed PillBadge / StatusPill,
 // tone colours, delta stats and their locale-aware digits, captions, one
-// semantics node each, wrapping at phone width), the confirm / cancel buttons (labels, callbacks, 48 dp, full
+// semantics node each, 8 / 16 dp gaps, wrapping at phone width), the
+// confirm / cancel buttons (labels, callbacks, 48 dp on every platform, full
 // width), the content-only contract (no handle, no pop), hosting in a modal
 // bottom sheet and in AppModal, short heights and the dark theme.
 
@@ -68,6 +69,11 @@ ToneColors _tone(WidgetTester tester, StatusTone tone) {
 
 TextStyle _style(WidgetTester tester, String text) {
   return tester.widget<Text>(find.text(text)).style!;
+}
+
+/// The column of the stat labelled [label] (its label above its pill).
+Finder _statColumn(String label) {
+  return find.ancestor(of: find.text(label), matching: find.byType(Column)).first;
 }
 
 /// The placeholder box (SizedBox under the ExcludeSemantics of _Placeholder).
@@ -234,9 +240,16 @@ void _statsTests() {
     expect(find.text("0.85"), findsOneWidget);
     expect(tester.getBottomLeft(find.text("Now")).dy, lessThan(tester.getTopLeft(find.text("0.72")).dy));
     expect(tester.getTopLeft(find.text("Now")).dy, tester.getTopLeft(find.text("Later")).dy);
+    // 16 dp under the title, 8 dp between two stats of the same run.
+    expect(tester.getTopLeft(find.text("Now")).dy - tester.getBottomLeft(find.text("Item B")).dy, kDefaultPadding * 2);
+    expect(
+      tester.getTopLeft(_statColumn("Later")).dx - tester.getTopRight(_statColumn("Now")).dx,
+      kDefaultPadding,
+    );
 
     final TextStyle label = _style(tester, "Now");
     expect(label.fontWeight, FontWeight.w700);
+    expect(label.letterSpacing, 0.5);
     expect(label.color, _scheme(tester).onSurfaceVariant);
   });
 
@@ -399,6 +412,12 @@ void _statsTests() {
     final double firstTop = tester.getTopLeft(find.text("First long caption for this stat")).dy;
     final double thirdTop = tester.getTopLeft(find.text("Third long caption for this stat")).dy;
     expect(thirdTop, greaterThan(firstTop));
+    // 8 dp between runs.
+    expect(
+      tester.getTopLeft(_statColumn("Second long caption for this stat")).dy -
+          tester.getBottomLeft(_statColumn("First long caption for this stat")).dy,
+      kDefaultPadding,
+    );
     expect(tester.getTopRight(find.byType(Wrap)).dx, lessThanOrEqualTo(360 - kDefaultPadding * 3));
   });
 }
@@ -469,20 +488,13 @@ void _actionsTests() {
     expect(find.widgetWithText(TextButton, _cancelKey), findsOneWidget);
   });
 
-  testWidgets("both buttons are at least 48 dp tall and span the content width", (WidgetTester tester) async {
-    await pumpApp(
-      tester,
-      const PreviewConfirmSheet(title: "Item B", onConfirm: _noop, onCancel: _noop),
-      surfaceSize: const Size(400, 800),
-    );
-
-    const double contentWidth = 400 - kDefaultPadding * 6;
-    for (final Finder button in <Finder>[find.byType(FilledButton), find.byType(TextButton)]) {
-      final Size size = tester.getSize(button);
-      expect(size.height, greaterThanOrEqualTo(kMinTapTarget));
-      expect(size.width, contentWidth);
-    }
-  });
+  testWidgets(
+    "both buttons are at least 48 dp tall and span the content width on every platform",
+    _buttonSizeTest,
+    // Desktop platforms default to a compact density and a shrink-wrapped
+    // tap target, which would bring a 48 dp minimum down to 40 dp.
+    variant: TargetPlatformVariant.all(),
+  );
 
   testWidgets("buttons expose button semantics with their label", (WidgetTester tester) async {
     final SemanticsHandle handle = tester.ensureSemantics();
@@ -662,6 +674,28 @@ void _hostingTests() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
+}
+
+Future<void> _buttonSizeTest(WidgetTester tester) async {
+  final SemanticsHandle handle = tester.ensureSemantics();
+  await pumpApp(
+    tester,
+    const PreviewConfirmSheet(title: "Item B", onConfirm: _noop, onCancel: _noop),
+    surfaceSize: const Size(400, 800),
+  );
+
+  const double contentWidth = 400 - kDefaultPadding * 6;
+  for (final Finder button in <Finder>[find.byType(FilledButton), find.byType(TextButton)]) {
+    // The hit area and the painted button itself.
+    final Finder painted = find.descendant(of: button, matching: find.byType(Material)).first;
+    for (final Finder box in <Finder>[button, painted]) {
+      final Size size = tester.getSize(box);
+      expect(size.height, greaterThanOrEqualTo(kMinTapTarget));
+      expect(size.width, contentWidth);
+    }
+  }
+  await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  handle.dispose();
 }
 
 Future<void> _deltaLocaleTest(WidgetTester tester) async {

@@ -5,7 +5,8 @@
 // loadSuggestions runs, then one titled, horizontally scrolling row of
 // chips per non-empty group. Hidden when there is nothing to show.
 // _SuggestionChip is a 32 dp pill in a 48 dp target; the imported one is
-// tinted cs.primary.
+// tinted cs.primary. A chip that cannot act (sheet locked, fewer than 3
+// points) is disabled: no tap, muted, announced as disabled.
 
 part of "../index.dart";
 
@@ -23,6 +24,10 @@ const Duration _kChipMotion = Duration(milliseconds: 160);
 
 /// Background opacity of the imported suggestion pill.
 const double _kImportedAlpha = 0.12;
+
+/// Opacity of a disabled pill's text, icon and border (Material's disabled
+/// content opacity).
+const double _kDisabledAlpha = 0.38;
 
 final class _SuggestionsBar extends StatelessWidget {
   final _PolygonWizardSheetState state;
@@ -98,7 +103,9 @@ final class _SuggestionsBar extends StatelessWidget {
                   child: _SuggestionChip(
                     label: suggestion.label,
                     imported: state.importedId == suggestion.id,
-                    onTap: () => state.toggleSuggestion(suggestion),
+                    onTap: !state.busy && suggestion.points.length >= 3
+                        ? () => state.toggleSuggestion(suggestion)
+                        : null,
                   ),
                 ),
             ],
@@ -112,7 +119,9 @@ final class _SuggestionsBar extends StatelessWidget {
 final class _SuggestionChip extends StatelessWidget {
   final String label;
   final bool imported;
-  final VoidCallback onTap;
+
+  /// Null disables the chip.
+  final VoidCallback? onTap;
 
   const _SuggestionChip({
     required this.label,
@@ -124,10 +133,19 @@ final class _SuggestionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final Color foreground = imported ? cs.primary : cs.onSurface;
+    final bool enabled = onTap != null;
+    final double alpha = enabled ? 1 : _kDisabledAlpha;
+    final Color foreground = (imported ? cs.primary : cs.onSurface).withValues(
+      alpha: alpha,
+    );
+    final Color iconColor = (imported ? cs.primary : cs.onSurfaceVariant)
+        .withValues(alpha: alpha);
+    final Color borderColor = (imported ? cs.primary : cs.outlineVariant)
+        .withValues(alpha: alpha);
     return Semantics(
       container: true,
       button: true,
+      enabled: enabled,
       selected: imported,
       child: InkWell(
         onTap: onTap,
@@ -152,18 +170,14 @@ final class _SuggestionChip extends StatelessWidget {
                     : cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: imported ? cs.primary : cs.outlineVariant,
+                  color: borderColor,
                   width: imported ? 1.5 : 1,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Icon(
-                    Icons.pentagon_outlined,
-                    size: 14,
-                    color: imported ? cs.primary : cs.onSurfaceVariant,
-                  ),
+                  Icon(Icons.pentagon_outlined, size: 14, color: iconColor),
                   const SizedBox(width: kDefaultPadding * 0.75),
                   ConstrainedBox(
                     constraints: const BoxConstraints(

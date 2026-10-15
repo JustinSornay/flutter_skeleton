@@ -183,6 +183,17 @@ void _resolveNameTests() {
         "F",
       );
     });
+
+    test("uses the title and the fallback as given, even blank", () {
+      const List<PolygonFormSelection> untitled = <PolygonFormSelection>[
+        PolygonFormSelection(id: "a", title: ""),
+      ];
+      expect(PolygonWizardRules.resolveName("", untitled, "F"), "");
+      expect(
+        PolygonWizardRules.resolveName("", const <PolygonFormSelection>[], " "),
+        " ",
+      );
+    });
   });
 }
 

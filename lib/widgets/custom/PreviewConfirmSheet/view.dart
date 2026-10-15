@@ -13,6 +13,7 @@ const double _statsGap = kDefaultPadding * 2;
 /// Gap between the content and the buttons.
 const double _actionsGap = kDefaultPadding * 3;
 
+/// Minimum size of both buttons.
 const Size _buttonMinimumSize = Size(kMinTapTarget, kMinTapTarget);
 
 mixin _ViewMixin {
@@ -88,7 +89,13 @@ mixin _ViewMixin {
     return <Widget>[
       FilledButton(
         onPressed: widget.onConfirm,
-        style: FilledButton.styleFrom(minimumSize: _buttonMinimumSize),
+        style: FilledButton.styleFrom(
+          minimumSize: _buttonMinimumSize,
+          // Desktop platforms default to a compact density (8 dp shorter)
+          // and a shrink-wrapped tap target, which would leave a 40 dp button.
+          visualDensity: VisualDensity.standard,
+          tapTargetSize: MaterialTapTargetSize.padded,
+        ),
         child: Text(
           _labelOr(widget.confirmLabel, "custom.preview_confirm_sheet.confirm"),
           style: const TextStyle(fontWeight: FontWeight.w700),
@@ -98,7 +105,11 @@ mixin _ViewMixin {
         const SizedBox(height: kDefaultPadding),
         TextButton(
           onPressed: onCancel,
-          style: TextButton.styleFrom(minimumSize: _buttonMinimumSize),
+          style: TextButton.styleFrom(
+            minimumSize: _buttonMinimumSize,
+            visualDensity: VisualDensity.standard,
+            tapTargetSize: MaterialTapTargetSize.padded,
+          ),
           child: Text(_labelOr(widget.cancelLabel, "custom.preview_confirm_sheet.cancel")),
         ),
       ],

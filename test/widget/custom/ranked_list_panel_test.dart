@@ -5,9 +5,11 @@
 // (shown, hidden, header), the rows (order, explicit and positional rank,
 // label, detail, chevron, taps with a typed value), the leading icon (tone
 // tint, neutral default, per-entry override, hidden), layout (48 dp rows,
-// narrow width, label / detail width sharing, 128 dp detail cap, untruncated
-// three-digit rank), semantics (one childless button node per row, raw key,
-// custom label, real English and French strings) and the dark theme.
+// one-line ellipsised label and detail, label / detail width sharing, 128 dp
+// detail cap, no gap after the title of an empty list), the rank column
+// (24 dp so icons line up, untruncated three-digit rank, right-to-left gap),
+// semantics (one childless button node per row, raw key, custom label, real
+// English and French strings) and the dark theme.
 
 import "package:easy_localization/easy_localization.dart" hide TextDirection;
 // ignore: implementation_imports
@@ -110,9 +112,25 @@ Icon _leadingIcon(WidgetTester tester, String label, IconData glyph) {
 }
 
 /// Outer Material of the panel.
-Material _surface(WidgetTester tester) {
-  return tester.widget<Material>(
-    find.descendant(of: find.byType(RankedListPanel<String>), matching: find.byType(Material)).first,
+final Finder _surfaceFinder = find
+    .descendant(of: find.byType(RankedListPanel<String>), matching: find.byType(Material))
+    .first;
+
+Material _surface(WidgetTester tester) => tester.widget<Material>(_surfaceFinder);
+
+/// Left edge of the leading star of the row showing [label].
+double _iconLeft(WidgetTester tester, String label) {
+  return tester.getRect(find.descendant(of: _row(label), matching: find.byIcon(Icons.star_border_rounded))).left;
+}
+
+/// Light theme with an 8 dp rank style. The test font draws every glyph as a
+/// square of the font size, so a 12 dp two-digit rank is 25 dp wide, wider
+/// than in any real font; at 8 dp, "10" fits the column as it does in real
+/// fonts at 12 dp.
+ThemeData _compactRankTheme() {
+  final ThemeData base = AppTheme.light();
+  return base.copyWith(
+    textTheme: base.textTheme.copyWith(labelMedium: base.textTheme.labelMedium?.copyWith(fontSize: 8)),
   );
 }
 
@@ -124,6 +142,7 @@ void main() {
   _rowTests();
   _iconTests();
   _layoutTests();
+  _rankTests();
   _semanticsTests();
   _themeTests();
 }
@@ -183,6 +202,8 @@ void _headerTests() {
       expect(find.text(_title), findsOneWidget);
       expect(find.byType(InkWell), findsNothing);
       expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+      // No row gap after the title: only the 16 dp bottom padding follows it.
+      expect(tester.getRect(_surfaceFinder).bottom, tester.getRect(find.text(_title)).bottom + kDefaultPadding * 2);
     });
   });
 }
@@ -327,18 +348,34 @@ void _layoutTests() {
       }
     });
 
-    testWidgets("long texts ellipsise at a narrow width without overflow", (WidgetTester tester) async {
+    testWidgets("long texts stay on one ellipsised line at a narrow width", (WidgetTester tester) async {
       final String long = List<String>.filled(30, "word").join(" ");
       await pumpApp(
         tester,
         _panel(
-          entries: <RankedListEntry<String>>[RankedListEntry<String>(value: "a", label: long, detail: long)],
+          entries: <RankedListEntry<String>>[
+            RankedListEntry<String>(value: "a", label: long, detail: long),
+            const RankedListEntry<String>(value: "b", label: "A", detail: "B"),
+          ],
         ),
         surfaceSize: const Size(260, 400),
       );
 
       expect(tester.takeException(), isNull);
-      expect(tester.widgetList<Text>(find.text(long)).every((Text t) => t.overflow == TextOverflow.ellipsis), isTrue);
+      final List<Text> texts = tester.widgetList<Text>(find.text(long)).toList();
+      expect(texts, hasLength(2));
+      for (final Text text in texts) {
+        expect(text.maxLines, 1);
+        expect(text.overflow, TextOverflow.ellipsis);
+      }
+      // find.text(long) yields the label first, then the detail; each must be
+      // truncated to the height of a one-line text in the same style.
+      final RenderParagraph label = tester.renderObject<RenderParagraph>(find.text(long).at(0));
+      final RenderParagraph detail = tester.renderObject<RenderParagraph>(find.text(long).at(1));
+      expect(label.didExceedMaxLines, isTrue);
+      expect(detail.didExceedMaxLines, isTrue);
+      expect(label.size.height, tester.getSize(find.text("A")).height);
+      expect(detail.size.height, tester.getSize(find.text("B")).height);
     });
 
     testWidgets("a long detail never squeezes the label out at 200 dp", (WidgetTester tester) async {
@@ -382,6 +419,28 @@ void _layoutTests() {
 
       expect(tester.getSize(find.text(long)).width, lessThanOrEqualTo(kDefaultPadding * 16));
     });
+  });
+}
+
+void _rankTests() {
+  group("rank column", () {
+    testWidgets("is 24 dp wide so the icons line up across ranks", (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        _panel(
+          entries: const <RankedListEntry<String>>[
+            RankedListEntry<String>(value: "a", label: "Ninth", rank: 9),
+            RankedListEntry<String>(value: "b", label: "Tenth", rank: 10),
+          ],
+        ),
+        theme: _compactRankTheme(),
+      );
+
+      final double ninth = _iconLeft(tester, "Ninth");
+      expect(_iconLeft(tester, "Tenth"), ninth);
+      final double contentLeft = tester.getRect(_row("Ninth")).left + kDefaultPadding / 2;
+      expect(ninth - contentLeft, kDefaultPadding * 3);
+    });
 
     testWidgets("a three-digit rank is drawn in full, clear of the icon", (WidgetTester tester) async {
       await pumpApp(
@@ -396,6 +455,23 @@ void _layoutTests() {
       final Rect rank = tester.getRect(find.text("100"));
       final Rect icon = tester.getRect(find.byIcon(Icons.star_border_rounded));
       expect(rank.right, lessThanOrEqualTo(icon.left));
+    });
+
+    testWidgets("right-to-left keeps the gap between the rank and the icon", (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        Directionality(
+          textDirection: TextDirection.rtl,
+          child: _panel(
+            entries: const <RankedListEntry<String>>[RankedListEntry<String>(value: "a", label: "Far", rank: 100)],
+          ),
+        ),
+      );
+
+      final Rect rank = tester.getRect(find.text("100"));
+      final Rect icon = tester.getRect(find.byIcon(Icons.star_border_rounded));
+      expect(rank.left - icon.right, kDefaultPadding / 2);
+      expect(rank.right, tester.getRect(_row("Far")).right - kDefaultPadding / 2);
     });
   });
 }

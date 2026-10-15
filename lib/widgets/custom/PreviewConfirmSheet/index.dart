@@ -111,8 +111,11 @@ final class PreviewStat {
   /// values. [value] keeps the locale-independent form ("+0.13": decimal
   /// point, no grouping).
   ///
-  /// Keep [epsilon] at least half a unit of the last shown decimal, or a tiny
-  /// change can render as "+0.00".
+  /// [epsilon] must be positive, so that a zero change is always "=", and
+  /// [fractionDigits] must be in 0..20 (the range of
+  /// [num.toStringAsFixed]); both are asserted. Keep [epsilon] at least half
+  /// a unit of the last shown decimal, or a tiny change can render as
+  /// "+0.00".
   ///
   /// [caption] and [semanticsLabel] work as in the default constructor. The
   /// good / bad tone is not announced, so give the words for it (e.g.
@@ -126,6 +129,8 @@ final class PreviewStat {
     String? caption,
     String? semanticsLabel,
   }) {
+    assert(epsilon > 0, "epsilon must be positive, so that a zero change is '='");
+    assert(fractionDigits >= 0 && fractionDigits <= 20, "fractionDigits must be in 0..20");
     if (delta.abs() < epsilon) {
       return PreviewStat(
         label: label,
@@ -166,12 +171,15 @@ final class PreviewStat {
 /// - [stats] in a [Wrap] (8 dp spacing, so long labels flow onto several
 ///   runs): each is a label above a composed [PillBadge] or [StatusPill]
 ///   (see [PreviewStat]), read as one semantics node.
-/// - a full-width [FilledButton] (at least [kMinTapTarget] tall) calling
-///   [onConfirm], labelled [confirmLabel] (null or empty →
-///   `custom.preview_confirm_sheet.confirm`).
+/// - a full-width [FilledButton] calling [onConfirm], labelled
+///   [confirmLabel] (null or empty → `custom.preview_confirm_sheet.confirm`).
 /// - when [onCancel] is non-null, a full-width [TextButton] below it,
 ///   labelled [cancelLabel] (null or empty →
 ///   `custom.preview_confirm_sheet.cancel`).
+///
+/// Both buttons are at least [kMinTapTarget] tall on every platform: they
+/// use the standard visual density and a padded tap target, so the compact
+/// desktop defaults do not shrink them to 40 dp.
 ///
 /// Content only: no drag handle, no background, and it never touches the
 /// Navigator. The host mounts it with
