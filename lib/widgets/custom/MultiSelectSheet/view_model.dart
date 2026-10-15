@@ -2,8 +2,9 @@
 //
 // _MultiSelectSheetState — the pending selection of MultiSelectSheet.
 // Seeded from the initialSelection values that match an option (at most max
-// of them), toggled by row taps within the optional cap,
-// and handed to onConfirm only when the confirm button is pressed.
+// of them), re-cleaned the same way when a rebuild changes options or max,
+// toggled by row taps within the optional cap, and handed to onConfirm only
+// when the confirm button is pressed.
 
 part of "index.dart";
 
@@ -23,10 +24,24 @@ final class _MultiSelectSheetState<K> extends State<MultiSelectSheet<K>> with _V
   @override
   void initState() {
     super.initState();
+    selected = Set<K>.of(widget.initialSelection);
+    _clean();
+  }
+
+  @override
+  void didUpdateWidget(MultiSelectSheet<K> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Always re-clean: a host may mutate its option list in place.
+    _clean();
+  }
+
+  /// Drops the selected values that match no option, then keeps the first
+  /// [MultiSelectSheet.max] of the rest, in insertion order.
+  void _clean() {
     final Set<K> known = widget.options.map((ChoiceOption<K> option) => option.value).toSet();
-    final Iterable<K> kept = widget.initialSelection.where(known.contains);
+    selected.retainWhere(known.contains);
     final int? max = widget.max;
-    selected = Set<K>.of(max == null ? kept : kept.take(max));
+    if (max != null && selected.length > max) selected.removeAll(selected.skip(max).toList());
   }
 
   /// True when [option] cannot be toggled.

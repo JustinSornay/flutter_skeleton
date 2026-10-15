@@ -1,7 +1,8 @@
 // score_banner_test.dart
 //
 // Widget tests for ScoreBanner: the message and the default / custom value
-// label, a long value label capped with an ellipsis, clamping, the tone
+// label, a long value label capped with an ellipsis, a short one at its
+// natural width, intrinsic sizing (IntrinsicHeight), clamping, the tone
 // colours for every StatusTone in the light and dark themes (background,
 // text, icon circle, tone-derived bar with its measured contrast, link), the
 // default and overridden icon, the note pill in its own tone, the optional
@@ -196,7 +197,7 @@ void main() {
         ),
       );
       final Text text = _text(tester, longLabel);
-      final double rowWidth = tester.getSize(find.ancestor(of: find.text(longLabel), matching: find.byType(Row)).first).width;
+      final double rowWidth = tester.getSize(find.ancestor(of: find.text(longLabel), matching: find.byType(Table))).width;
 
       expect(tester.takeException(), isNull);
       expect(text.maxLines, 1);
@@ -205,6 +206,33 @@ void main() {
       expect(tester.getSize(find.byType(LinearProgressIndicator)).width, greaterThan(0));
       expect(find.bySemanticsLabel(longLabel), findsOneWidget);
       handle.dispose();
+    });
+
+    testWidgets("a short valueLabel keeps its natural width and the bar takes the rest", (WidgetTester tester) async {
+      await _pumpBanner(tester, _banner(valueLabel: "72"));
+      final double rowWidth = tester.getSize(find.ancestor(of: find.text("72"), matching: find.byType(Table))).width;
+      final double textWidth = tester.getSize(find.text("72")).width;
+      final double barWidth = tester.getSize(find.byType(LinearProgressIndicator)).width;
+
+      expect(textWidth, lessThan(rowWidth / 4));
+      expect(barWidth + kDefaultPadding + textWidth, moreOrLessEquals(rowWidth));
+    });
+
+    testWidgets("supports intrinsic sizing (IntrinsicHeight)", (WidgetTester tester) async {
+      await pumpApp(
+        tester,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(child: _banner(note: const ScoreBannerNote(label: "Low reliability"), onLink: () {})),
+            ],
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byType(LinearProgressIndicator)).width, greaterThan(0));
     });
   });
 

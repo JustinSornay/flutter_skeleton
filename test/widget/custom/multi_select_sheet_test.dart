@@ -4,7 +4,8 @@
 // toggling by row or checkbox, initial selection, the optional cap, disabled
 // options, the confirm button and its payload, empty state, custom labels,
 // the capped list height, semantics and tap targets, real translations,
-// the dark theme, and hosting in an AppModal and a modal bottom sheet.
+// the selection clean-up after a host rebuild, the dark theme, and hosting in
+// an AppModal and a modal bottom sheet.
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
@@ -682,6 +683,39 @@ void main() {
     testWidgets("never counts more initial values than max", (WidgetTester tester) async {
       await _pumpLocalized(tester, const Locale("en"), _sheet(_Calls(), initialSelection: <int>{1, 2, 3}, max: 2));
       expect(find.text("2/2 selected"), findsOneWidget);
+    });
+
+    testWidgets("re-cleans the selection when a rebuild shrinks options and max", (WidgetTester tester) async {
+      final _Calls calls = _Calls();
+      final ValueNotifier<bool> shrunk = ValueNotifier<bool>(false);
+      addTearDown(shrunk.dispose);
+      await _pumpLocalized(
+        tester,
+        const Locale("en"),
+        ValueListenableBuilder<bool>(
+          valueListenable: shrunk,
+          builder: (BuildContext context, bool isShrunk, Widget? child) =>
+              isShrunk ? _sheet(calls, options: _options.sublist(1), max: 1) : _sheet(calls),
+        ),
+      );
+
+      await tester.tap(find.text("Alpha"));
+      await tester.tap(find.text("Beta"));
+      await tester.tap(find.text("Gamma"));
+      await tester.pump();
+      expect(find.text("3 selected"), findsOneWidget);
+
+      shrunk.value = true;
+      await tester.pump();
+      expect(find.text("Alpha"), findsNothing);
+      expect(find.text("1/1 selected"), findsOneWidget);
+      expect(_checkbox(tester, "Beta").value, isTrue);
+      expect(_checkbox(tester, "Gamma").value, isFalse);
+      expect(_checkbox(tester, "Gamma").onChanged, isNull);
+
+      await tester.tap(find.byType(FilledButton));
+      await tester.pump();
+      expect(calls.confirmed.single.toList(), <int>[2]);
     });
 
     testWidgets("renders the uncapped counter and empty text in English", (WidgetTester tester) async {

@@ -74,7 +74,7 @@ const Map<String, Map<String, String>> _fragment = <String, Map<String, String>>
 
 /// Reads the real `<path>/<lang>.json` once it holds `custom.confidence_badge`,
 /// so the expectations below check the shipped strings; until then it serves
-/// [_fragment]. Synchronous I/O completes inside the fake-async test zone.
+/// [_fragment]. Synchronous I/O completes under the fake-async clock.
 final class _TranslationsLoader extends AssetLoader {
   const _TranslationsLoader();
 
@@ -324,6 +324,12 @@ void main() {
 
     testWidgets("en: the percentage is floored below a threshold", (WidgetTester tester) async {
       await _pumpLocalized(tester, const Locale("en"), const ConfidenceBadge(value: 0.7999));
+
+      expect(_tooltip(tester).message, "Data reliability: Moderate (79%)");
+    });
+
+    testWidgets("en: flooring holds however close the value is to a threshold", (WidgetTester tester) async {
+      await _pumpLocalized(tester, const Locale("en"), const ConfidenceBadge(value: 0.79999999999));
 
       expect(_tooltip(tester).message, "Data reliability: Moderate (79%)");
     });

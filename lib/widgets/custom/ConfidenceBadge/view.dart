@@ -13,9 +13,6 @@ const double _iconGap = kDefaultPadding / 2;
 /// How long the tooltip stays visible after a tap.
 const Duration _tooltipDuration = Duration(seconds: 5);
 
-/// Absorbs binary rounding before flooring (0.29 * 100 is 28.999…).
-const double _floorEpsilon = 1e-9;
-
 mixin _ViewMixin {
   Widget render(BuildContext context, ConfidenceBadge widget) {
     final ConfidenceLevel level = ConfidenceBadge.levelOf(
@@ -90,9 +87,12 @@ mixin _ViewMixin {
   /// [value] (already in `[0, 1]`) floored to a whole percent, so a value
   /// just below a threshold never reads as the threshold (0.7999 → 79%), then
   /// formatted for the current locale; an unknown locale falls back to intl's
-  /// default.
+  /// default. The nearest whole percent is stepped down when it exceeds
+  /// [value]: exact at any distance below a threshold, and immune to binary
+  /// rounding (0.29 * 100 is 28.999…, still 29%).
   String _percent(BuildContext context, double value) {
-    final double floored = (value * 100 + _floorEpsilon).floorToDouble() / 100;
+    final int nearest = (value * 100).round();
+    final double floored = (nearest / 100 > value ? nearest - 1 : nearest) / 100;
     final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
     final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
     return NumberFormat.percentPattern(locale).format(floored);

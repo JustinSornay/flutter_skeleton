@@ -6,8 +6,9 @@
 // fractions or the parent height change (animated, or a jump under reduced
 // motion). Writes the resting height back into the controller after user
 // drags: snaps passed during a drag, on the way to a programmatic target or
-// while new heights replace the old ones are ignored. Also handles the
-// handle tap cycle and the grip drags.
+// while new heights replace the old ones are ignored. Replays the
+// controller's height when the body's scrollable attaches (after a loader).
+// Also handles the handle tap cycle and the grip drags.
 
 part of "index.dart";
 
@@ -32,6 +33,10 @@ final class _SnapBottomSheetState extends State<SnapBottomSheet> with _ViewMixin
 
   /// Whether the body's scrollable is being dragged or is still settling.
   bool _bodyDragging = false;
+
+  /// Position of the body's scrollable last seen attached to the sheet, to
+  /// tell when the body builds a new one (see [_onBodyMetrics]).
+  ScrollPosition? _bodyPosition;
 
   @override
   void initState() {
@@ -107,7 +112,9 @@ final class _SnapBottomSheetState extends State<SnapBottomSheet> with _ViewMixin
   void _onSnapChanged() => _moveTo(widget.controller.snap);
 
   /// Moves the sheet to [snap]: animated, or a jump under reduced motion.
-  /// Does nothing when the sheet is not attached or is already there.
+  /// Does nothing when the sheet is already there, or when it is not
+  /// attached: the body's scrollable replays the move when it attaches
+  /// (see [_onBodyMetrics]).
   void _moveTo(SheetSnap snap) {
     if (!_sheet.isAttached) return;
     final double size = _stops.fractionOf(snap);
@@ -115,15 +122,15 @@ final class _SnapBottomSheetState extends State<SnapBottomSheet> with _ViewMixin
       _target = null;
       return;
     }
+    // Set before moving: jumpTo and animateTo end a body scroll
+    // synchronously, and its end reports the height the sheet is leaving.
+    _target = snap;
     final Duration duration = resolveMotion(context, _kSnapDuration);
     if (duration == Duration.zero) {
-      _target = null;
       _sheet.jumpTo(size);
-      return;
+    } else {
+      unawaited(_sheet.animateTo(size, duration: duration, curve: Curves.easeOutCubic));
     }
-    // Set before animating: animateTo may end a body scroll synchronously.
-    _target = snap;
-    unawaited(_sheet.animateTo(size, duration: duration, curve: Curves.easeOutCubic));
   }
 
   /// Writes the height the sheet rests at back into the controller. Ignores
@@ -149,6 +156,24 @@ final class _SnapBottomSheetState extends State<SnapBottomSheet> with _ViewMixin
       _bodyDragging = false;
       _syncFromSheet();
     }
+    return false;
+  }
+
+  /// Called for every scroll metrics notification of the body. Moves the
+  /// sheet to the controller's height when the scrollable attached to
+  /// [scrollController] is a new one: shown after a loader, or rebuilt under
+  /// a new key. A move requested before it attached was dropped, and the
+  /// sheet stops a move in flight when the previous scrollable detaches. A
+  /// scrollable dispatches its first metrics just after the frame that laid
+  /// it out, outside build and layout, so the sheet can move right away.
+  /// Skipped during a grip drag, whose release settles the sheet. Other
+  /// scrollables in the body only repeat the identity check.
+  bool _onBodyMetrics(ScrollController scrollController) {
+    if (!scrollController.hasClients) return false;
+    final ScrollPosition position = scrollController.position;
+    if (identical(position, _bodyPosition)) return false;
+    _bodyPosition = position;
+    if (!_gripDragging) _moveTo(widget.controller.snap);
     return false;
   }
 

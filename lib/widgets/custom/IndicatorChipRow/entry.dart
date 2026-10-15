@@ -14,10 +14,7 @@ final class IndicatorChipEntry {
   /// Optional leading icon in the chip colour. Omitted when null.
   final IconData? icon;
 
-  /// Tone of the chip when [active]. Ignored when inactive.
-  ///
-  /// An active entry with the neutral tone (the default) looks the same as
-  /// a muted one, so [active] only shows when [tone] is not neutral.
+  /// Tone of the chip when [active]. Ignored when inactive (see [active]).
   final StatusTone tone;
 
   /// When false the chip renders muted, in [StatusTone.neutral].

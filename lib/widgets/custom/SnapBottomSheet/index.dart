@@ -50,9 +50,11 @@ const BorderRadius _kSheetRadius = BorderRadius.vertical(top: Radius.circular(2 
 ///   settles. The parent can swap it for another controller.
 /// - [builder]: builds the body. It **must** attach the given
 ///   [ScrollController] to its primary scrollable (`ListView`,
-///   `CustomScrollView`…). Dragging that list then drags the sheet, and the
-///   sheet only moves (from code or from the handle) once that scrollable
-///   is attached.
+///   `CustomScrollView`…). Dragging that list then drags the sheet. Until
+///   that scrollable is attached (a loader shown first, for instance) the
+///   sheet cannot move: a height requested meanwhile, from code or from the
+///   handle, is applied as soon as it attaches, and so is a move cut short
+///   when the body replaces its scrollable.
 /// - [header]: pinned between the handle and the body (a title, a counter…).
 ///   The collapsed height rises to fit it (see below).
 /// - [collapsedFraction], [midFraction], [fullFraction]: the three heights

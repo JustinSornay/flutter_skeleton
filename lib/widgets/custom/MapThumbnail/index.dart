@@ -16,13 +16,20 @@ part "view.dart";
 /// Static map preview centred on ([lat], [lon]).
 ///
 /// - Tiles come from [tileLayer]: the host owns the tile URL, the user agent
-///   the tile policy requires, caching and the `errorTileCallback` (a failed
-///   tile leaves [backgroundColor] visible). Tests pass a `TileLayer` with an
-///   in-memory `TileProvider`.
+///   the tile policy requires, caching and the optional `errorTileCallback`
+///   (a failed tile throws nothing and leaves [backgroundColor] visible).
+///   Tests pass a `TileLayer` with an in-memory `TileProvider`.
+/// - Build [tileLayer] in the host's `build` (a new instance per build is
+///   fine) and never share one instance between thumbnails or keep it in a
+///   field: flutter_map disposes a layer's `TileProvider` when its map
+///   unmounts, which happens when the thumbnail leaves the tree and when
+///   [lat], [lon] or [zoom] change. To share an HTTP client, hand it to each
+///   provider (`NetworkTileProvider(httpClient: client)` leaves it open).
 /// - The camera is fixed at [zoom]; every map gesture is off and the preview
 ///   absorbs pointers before they reach the map, so a host `InkWell` /
 ///   `GestureDetector` around it receives taps and a scrolling parent keeps
-///   scrolling. Changing [lat], [lon] or [zoom] recentres the camera.
+///   scrolling. Changing [lat], [lon] or [zoom] recentres the camera (the map
+///   is remounted).
 /// - The pin sits at the viewport centre (not geo-projected, which is exact
 ///   because the camera is centred on the coordinate). Its box is anchored by
 ///   its bottom centre, so the tip of the default [MapPin] (sized
@@ -52,7 +59,8 @@ final class MapThumbnail extends StatelessWidget with _ViewMixin {
   /// Longitude of the centre (WGS84, degrees).
   final double lon;
 
-  /// Base map tiles (the only map layer).
+  /// Base map tiles (the only map layer). One instance per thumbnail, built
+  /// by the host on each build (see the class dartdoc).
   final TileLayer tileLayer;
 
   /// Box width. Defaults to 48.

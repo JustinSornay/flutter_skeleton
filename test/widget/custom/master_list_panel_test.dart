@@ -3,8 +3,9 @@
 // Widget tests for MasterListPanel: loading skeleton (Idle / Loading, reduced
 // motion, narrow panel), error state (retry, hidden retry), empty state
 // (default and custom texts), rows (archived filtering, subtitle line, tag
-// pills + "+N" pill, selection border / background / semantics, pill fill on
-// the selected row, long trailing text, 48 dp rows), the create button, tabs
+// pills + "+N" pill, long tags, selection border / background / semantics,
+// pill fill on the selected row, long trailing text, 48 dp rows), the create
+// button, tabs
 // (filtering, counts, onTabChanged, per-tab labels, controller resizing and
 // index clamping, reduced motion), the archive drawer (snap cycle and
 // heights, chevron, tap outside, archived rows, empty archive, title
@@ -370,6 +371,15 @@ void main() {
       await _pump(tester, _panel(_Calls(), state: const Loaded<List<MasterListItem>>(<MasterListItem>[_beta])));
 
       expect(find.byType(PillBadge), findsNothing);
+    });
+
+    testWidgets("a tag wider than the row is ellipsised without overflow", (WidgetTester tester) async {
+      const MasterListItem wide = MasterListItem(id: "w", title: "Omega", tags: <String>[_longTrailing, "Two"]);
+      await _pump(tester, _panel(_Calls(), state: const Loaded<List<MasterListItem>>(<MasterListItem>[wide])));
+
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(_pillBadge(_longTrailing)).right, lessThanOrEqualTo(_panelWidth - _rowInset));
+      expect(_pillBadge("Two"), findsOneWidget);
     });
 
     testWidgets("the selected row has the primary border and selected background", (WidgetTester tester) async {

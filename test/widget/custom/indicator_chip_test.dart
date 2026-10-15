@@ -61,405 +61,414 @@ Future<void> _finishTooltipTimers(WidgetTester tester) async {
 }
 
 void main() {
-  group("structure", () {
-    testWidgets("renders the label alone by default, without an icon", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label));
+  group("structure", _structureTests);
+  group("ratio", _ratioTests);
+  group("colours", _coloursTests);
+  group("contrast", _contrastTests);
+  group("tooltip", _tooltipTests);
+  group("semantics", _semanticsTests);
+  group("layout robustness", _layoutRobustnessTests);
+  group("dark theme", _darkThemeTests);
+}
 
-      expect(find.text(_label), findsOneWidget);
-      expect(_inChip(find.byType(Icon)), findsNothing);
-    });
+void _structureTests() {
+  testWidgets("renders the label alone by default, without an icon", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label));
 
-    testWidgets("renders a 14 dp icon 6 dp before the text, in the text colour", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label, icon: Icons.public));
-
-      final Icon icon = tester.widget<Icon>(find.byIcon(Icons.public));
-      expect(icon.size, 14);
-      expect(icon.color, _text(tester).style?.color);
-      expect(
-        tester.getTopLeft(find.text(_label)).dx - tester.getTopRight(find.byIcon(Icons.public)).dx,
-        6,
-      );
-    });
-
-    testWidgets("text is labelMedium / w600 on one line with an ellipsis", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label));
-      final TextTheme textTheme = Theme.of(tester.element(find.byType(IndicatorChip))).textTheme;
-
-      final Text text = _text(tester);
-      expect(text.style?.fontSize, textTheme.labelMedium?.fontSize);
-      expect(text.style?.fontWeight, FontWeight.w600);
-      expect(text.maxLines, 1);
-      expect(text.overflow, TextOverflow.ellipsis);
-    });
+    expect(find.text(_label), findsOneWidget);
+    expect(_inChip(find.byType(Icon)), findsNothing);
   });
 
-  group("ratio", () {
-    testWidgets("en-US: appends the percentage in parentheses", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label, ratio: 0.55));
+  testWidgets("renders a 14 dp icon 6 dp before the text, in the text colour", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label, icon: Icons.public));
 
-      expect(_visible(tester), "$_label (55%)");
-    });
-
-    testWidgets("fr: uses the French percent format", (WidgetTester tester) async {
-      await pumpApp(tester, _withLocale(const Locale("fr", "FR"), const IndicatorChip(label: _label, ratio: 0.55)));
-
-      final String percent = NumberFormat.percentPattern("fr_FR").format(0.55);
-      expect(percent, isNot("55%"));
-      expect(_visible(tester), "$_label ($percent)");
-    });
-
-    testWidgets("bounds 0 and 1 format as 0% and 100%", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label, ratio: 0));
-      expect(_visible(tester), "$_label (0%)");
-
-      await pumpApp(tester, const IndicatorChip(label: _label, ratio: 1));
-      expect(_visible(tester), "$_label (100%)");
-    });
-
-    testWidgets("no ratio: no parentheses and no percent sign", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label));
-
-      expect(_visible(tester), _label);
-      expect(_visible(tester), isNot(contains("%")));
-      expect(_visible(tester), isNot(contains("(")));
-    });
-
-    test("asserts the ratio is in [0, 1]", () {
-      IndicatorChip build(double ratio) => IndicatorChip(label: _label, ratio: ratio);
-
-      expect(() => build(-0.1), throwsAssertionError);
-      expect(() => build(1.2), throwsAssertionError);
-      expect(() => build(double.nan), throwsAssertionError);
-      expect(build(0).ratio, 0);
-      expect(build(1).ratio, 1);
-    });
+    final Icon icon = tester.widget<Icon>(find.byIcon(Icons.public));
+    expect(icon.size, 14);
+    expect(icon.color, _text(tester).style?.color);
+    expect(
+      tester.getTopLeft(find.text(_label)).dx - tester.getTopRight(find.byIcon(Icons.public)).dx,
+      6,
+    );
   });
 
-  group("colours", () {
-    for (final StatusTone tone in StatusTone.values) {
-      testWidgets("${tone.name}: text, icon, 6 % fill and 30 % border", (WidgetTester tester) async {
-        await pumpApp(tester, IndicatorChip(label: _label, tone: tone, icon: tone.icon));
+  testWidgets("text is labelMedium / w600 on one line with an ellipsis", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label));
+    final TextTheme textTheme = Theme.of(tester.element(find.byType(IndicatorChip))).textTheme;
 
-        final Color fg = _foreground(tester, tone);
-        expect(_text(tester).style?.color, fg);
-        expect(tester.widget<Icon>(find.byIcon(tone.icon)).color, fg);
-        final BoxDecoration decoration = _decoration(tester);
-        expect(decoration.color, fg.withValues(alpha: 0.06));
-        expect(decoration.border, Border.all(color: fg.withValues(alpha: 0.30)));
-        expect(decoration.borderRadius, BorderRadius.circular(8));
-      });
-    }
+    final Text text = _text(tester);
+    expect(text.style?.fontSize, textTheme.labelMedium?.fontSize);
+    expect(text.style?.fontWeight, FontWeight.w600);
+    expect(text.maxLines, 1);
+    expect(text.overflow, TextOverflow.ellipsis);
+  });
+}
 
-    testWidgets("neutral is onSurfaceVariant and primary is cs.primary", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label));
-      expect(_text(tester).style?.color, _scheme(tester).onSurfaceVariant);
+void _ratioTests() {
+  testWidgets("en-US: appends the percentage in parentheses", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label, ratio: 0.55));
 
-      await pumpApp(tester, const IndicatorChip(label: _label, tone: StatusTone.primary));
-      expect(_text(tester).style?.color, _scheme(tester).primary);
-    });
-
-    testWidgets("danger uses the StatusTones danger foreground", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label, tone: StatusTone.danger));
-      final StatusTones tones = StatusTones.of(tester.element(find.byType(IndicatorChip)));
-
-      expect(_text(tester).style?.color, tones.danger.foreground);
-    });
-
-    testWidgets("color overrides the tone and drives fill and border", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label));
-      final Color override = _scheme(tester).tertiary;
-
-      await pumpApp(
-        tester,
-        IndicatorChip(label: _label, tone: StatusTone.danger, icon: Icons.public, color: override),
-      );
-
-      expect(_text(tester).style?.color, override);
-      expect(tester.widget<Icon>(find.byIcon(Icons.public)).color, override);
-      expect(_decoration(tester).color, override.withValues(alpha: 0.06));
-      expect(_decoration(tester).border, Border.all(color: override.withValues(alpha: 0.30)));
-    });
-
-    testWidgets("compact padding of 10 / 6 dp", (WidgetTester tester) async {
-      await pumpApp(tester, const IndicatorChip(label: _label));
-
-      expect(_chip(tester).padding, const EdgeInsets.symmetric(horizontal: 10, vertical: 6));
-    });
+    expect(_visible(tester), "$_label (55%)");
   });
 
-  group("contrast", () {
-    final Map<String, ThemeData> themes = <String, ThemeData>{
-      "light": AppTheme.light(),
-      "dark": AppTheme.dark(),
-    };
-    themes.forEach((String name, ThemeData theme) {
-      testWidgets("$name: every tone's text is >= 4.5:1 on its tint over surface … surfaceContainerHighest",
-          (WidgetTester tester) async {
-        await pumpApp(
-          tester,
-          Column(
-            children: <Widget>[
-              for (final StatusTone tone in StatusTone.values) IndicatorChip(label: tone.name, tone: tone),
-            ],
-          ),
-          theme: theme,
-        );
+  testWidgets("fr: uses the French percent format", (WidgetTester tester) async {
+    await pumpApp(tester, _withLocale(const Locale("fr", "FR"), const IndicatorChip(label: _label, ratio: 0.55)));
 
-        final ColorScheme cs = theme.colorScheme;
-        final Map<String, Color> surfaces = <String, Color>{
-          "surface": cs.surface,
-          "surfaceContainerLowest": cs.surfaceContainerLowest,
-          "surfaceContainerLow": cs.surfaceContainerLow,
-          "surfaceContainer": cs.surfaceContainer,
-          "surfaceContainerHigh": cs.surfaceContainerHigh,
-          "surfaceContainerHighest": cs.surfaceContainerHighest,
-        };
-        for (final StatusTone tone in StatusTone.values) {
-          final Finder chip = find.ancestor(of: find.text(tone.name), matching: find.byType(IndicatorChip));
-          final Color text = tester.widget<Text>(find.text(tone.name)).style!.color!;
-          final Container box = tester.widget<Container>(find.descendant(of: chip, matching: find.byType(Container)));
-          final Color fill = (box.decoration! as BoxDecoration).color!;
-          surfaces.forEach((String surfaceName, Color surface) {
-            expect(
-              _contrast(text, Color.alphaBlend(fill, surface)),
-              greaterThanOrEqualTo(4.5),
-              reason: "${tone.name} on $surfaceName",
-            );
-          });
-        }
-      });
-    });
+    final String percent = NumberFormat.percentPattern("fr_FR").format(0.55);
+    expect(percent, isNot("55%"));
+    expect(_visible(tester), "$_label ($percent)");
   });
 
-  group("tooltip", () {
-    testWidgets("no tooltip: no Tooltip and the chip keeps its compact height", (WidgetTester tester) async {
-      await pumpApp(tester, const Center(child: IndicatorChip(label: _label)));
+  testWidgets("bounds 0 and 1 format as 0% and 100%", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label, ratio: 0));
+    expect(_visible(tester), "$_label (0%)");
 
-      expect(find.byType(Tooltip), findsNothing);
-      expect(tester.getSize(find.byType(IndicatorChip)).height, lessThan(kMinTapTarget));
-    });
-
-    testWidgets("an empty tooltip is treated as none", (WidgetTester tester) async {
-      await pumpApp(tester, const Center(child: IndicatorChip(label: _label, tooltip: "")));
-
-      expect(find.byType(Tooltip), findsNothing);
-    });
-
-    testWidgets("tap tooltip, no wait, 5 s, with a 48 dp hit area around the chip", (WidgetTester tester) async {
-      await pumpApp(tester, const Center(child: IndicatorChip(label: "A", tooltip: _tip)));
-
-      final Tooltip tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
-      expect(tooltip.message, _tip);
-      expect(tooltip.triggerMode, TooltipTriggerMode.tap);
-      expect(tooltip.waitDuration, Duration.zero);
-      expect(tooltip.showDuration, const Duration(seconds: 5));
-
-      final Size area = tester.getSize(find.byType(IndicatorChip));
-      expect(area.width, greaterThanOrEqualTo(kMinTapTarget));
-      expect(area.height, greaterThanOrEqualTo(kMinTapTarget));
-      expect(tester.getSize(_inChip(find.byType(Container))).height, lessThan(kMinTapTarget));
-      expect(
-        tester.getCenter(_inChip(find.byType(Container))),
-        tester.getCenter(find.byType(IndicatorChip)),
-      );
-    });
-
-    testWidgets("tapping the chip shows the message", (WidgetTester tester) async {
-      await pumpApp(tester, const Center(child: IndicatorChip(label: _label, tooltip: _tip)));
-
-      expect(find.text(_tip), findsNothing);
-      await tester.tap(find.text(_label));
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text(_tip), findsOneWidget);
-
-      await _finishTooltipTimers(tester);
-    });
-
-    testWidgets("tapping the enlarged area outside the chip also shows the message", (WidgetTester tester) async {
-      await pumpApp(tester, const Center(child: IndicatorChip(label: "A", tooltip: _tip)));
-
-      final Rect area = tester.getRect(find.byType(IndicatorChip));
-      final Rect chip = tester.getRect(_inChip(find.byType(Container)));
-      final Offset outsideChip = Offset(area.center.dx, area.top + 2);
-      expect(chip.contains(outsideChip), isFalse);
-
-      await tester.tapAt(outsideChip);
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(find.text(_tip), findsOneWidget);
-
-      await _finishTooltipTimers(tester);
-    });
+    await pumpApp(tester, const IndicatorChip(label: _label, ratio: 1));
+    expect(_visible(tester), "$_label (100%)");
   });
 
-  group("semantics", () {
-    testWidgets("without semanticsLabel the visible text is announced once", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(tester, const IndicatorChip(label: _label, ratio: 0.55, icon: Icons.public));
+  testWidgets("no ratio: no parentheses and no percent sign", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label));
 
-      expect(find.bySemanticsLabel("$_label (55%)"), findsOneWidget);
-      handle.dispose();
-    });
-
-    testWidgets("semanticsLabel replaces the visible text", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(
-        tester,
-        const IndicatorChip(label: _label, ratio: 0.55, semanticsLabel: "Reference class: moderate"),
-      );
-
-      expect(find.bySemanticsLabel("Reference class: moderate"), findsOneWidget);
-      expect(find.bySemanticsLabel("$_label (55%)"), findsNothing);
-      handle.dispose();
-    });
-
-    testWidgets("two chips side by side keep separate labels", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(
-        tester,
-        const Row(
-          children: <Widget>[
-            IndicatorChip(label: "First"),
-            IndicatorChip(label: "Second"),
-          ],
-        ),
-      );
-
-      expect(find.bySemanticsLabel("First"), findsOneWidget);
-      expect(find.bySemanticsLabel("Second"), findsOneWidget);
-      handle.dispose();
-    });
-
-    for (final String? tip in <String?>[null, _tip]) {
-      testWidgets("is its own node inside a labelled container (tooltip: ${tip != null})",
-          (WidgetTester tester) async {
-        final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpApp(
-          tester,
-          Semantics(
-            container: true,
-            label: "Card",
-            child: Column(children: <Widget>[IndicatorChip(label: _label, tooltip: tip)]),
-          ),
-        );
-
-        expect(find.bySemanticsLabel(_label), findsOneWidget);
-        expect(find.bySemanticsLabel("Card"), findsOneWidget);
-        final SemanticsNode chipNode = tester.getSemantics(find.bySemanticsLabel(_label));
-        final SemanticsNode cardNode = tester.getSemantics(find.bySemanticsLabel("Card"));
-        expect(chipNode.id, isNot(cardNode.id));
-        expect(cardNode.label, "Card");
-        expect(cardNode.tooltip, "");
-        expect(chipNode.tooltip, tip ?? "");
-        handle.dispose();
-      });
-    }
-
-    testWidgets("a tooltip chip exposes its label and its tooltip", (WidgetTester tester) async {
-      final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpApp(tester, const Center(child: IndicatorChip(label: _label, tooltip: _tip)));
-
-      expect(find.bySemanticsLabel(_label), findsOneWidget);
-      expect(tester.getSemantics(find.bySemanticsLabel(_label)).tooltip, _tip);
-      handle.dispose();
-    });
+    expect(_visible(tester), _label);
+    expect(_visible(tester), isNot(contains("%")));
+    expect(_visible(tester), isNot(contains("(")));
   });
 
-  group("layout robustness", () {
-    testWidgets("ellipsizes a long label in a 120 dp parent without overflow", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        const Center(
-          child: SizedBox(
-            width: 120,
-            child: IndicatorChip(
-              label: "A rather long indicator label that cannot fit",
-              ratio: 0.42,
-              icon: Icons.public,
-            ),
-          ),
-        ),
-      );
+  test("asserts the ratio is in [0, 1]", () {
+    IndicatorChip build(double ratio) => IndicatorChip(label: _label, ratio: ratio);
 
-      expect(tester.takeException(), isNull);
-      expect(tester.getSize(find.byType(IndicatorChip)).width, lessThanOrEqualTo(120));
+    expect(() => build(-0.1), throwsAssertionError);
+    expect(() => build(1.2), throwsAssertionError);
+    expect(() => build(double.nan), throwsAssertionError);
+    expect(build(0).ratio, 0);
+    expect(build(1).ratio, 1);
+  });
+}
+
+void _coloursTests() {
+  for (final StatusTone tone in StatusTone.values) {
+    testWidgets("${tone.name}: text, icon, 6 % fill and 30 % border", (WidgetTester tester) async {
+      await pumpApp(tester, IndicatorChip(label: _label, tone: tone, icon: tone.icon));
+
+      final Color fg = _foreground(tester, tone);
+      expect(_text(tester).style?.color, fg);
+      expect(tester.widget<Icon>(find.byIcon(tone.icon)).color, fg);
+      final BoxDecoration decoration = _decoration(tester);
+      expect(decoration.color, fg.withValues(alpha: 0.06));
+      expect(decoration.border, Border.all(color: fg.withValues(alpha: 0.30)));
+      expect(decoration.borderRadius, BorderRadius.circular(8));
     });
+  }
 
-    testWidgets("stays compact and centred under a tight width, with or without a tooltip",
+  testWidgets("neutral is onSurfaceVariant and primary is cs.primary", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label));
+    expect(_text(tester).style?.color, _scheme(tester).onSurfaceVariant);
+
+    await pumpApp(tester, const IndicatorChip(label: _label, tone: StatusTone.primary));
+    expect(_text(tester).style?.color, _scheme(tester).primary);
+  });
+
+  testWidgets("danger uses the StatusTones danger foreground", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label, tone: StatusTone.danger));
+    final StatusTones tones = StatusTones.of(tester.element(find.byType(IndicatorChip)));
+
+    expect(_text(tester).style?.color, tones.danger.foreground);
+  });
+
+  testWidgets("color overrides the tone and drives fill and border", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label));
+    final Color override = _scheme(tester).tertiary;
+
+    await pumpApp(
+      tester,
+      IndicatorChip(label: _label, tone: StatusTone.danger, icon: Icons.public, color: override),
+    );
+
+    expect(_text(tester).style?.color, override);
+    expect(tester.widget<Icon>(find.byIcon(Icons.public)).color, override);
+    expect(_decoration(tester).color, override.withValues(alpha: 0.06));
+    expect(_decoration(tester).border, Border.all(color: override.withValues(alpha: 0.30)));
+  });
+
+  testWidgets("compact padding of 10 / 6 dp", (WidgetTester tester) async {
+    await pumpApp(tester, const IndicatorChip(label: _label));
+
+    expect(_chip(tester).padding, const EdgeInsets.symmetric(horizontal: 10, vertical: 6));
+  });
+}
+
+void _contrastTests() {
+  final Map<String, ThemeData> themes = <String, ThemeData>{
+    "light": AppTheme.light(),
+    "dark": AppTheme.dark(),
+  };
+  themes.forEach((String name, ThemeData theme) {
+    testWidgets("$name: every tone's text is >= 4.5:1 on its tint over surface … surfaceContainerHighest",
         (WidgetTester tester) async {
-      final List<double> widths = <double>[];
-      for (final String? tip in <String?>[null, _tip]) {
-        await pumpApp(
-          tester,
-          Center(
-            child: SizedBox(
-              width: 300,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[IndicatorChip(label: "A", tooltip: tip)],
-              ),
-            ),
-          ),
-        );
-
-        final Rect chip = tester.getRect(_inChip(find.byType(Container)));
-        expect(chip.width, lessThan(kMinTapTarget * 2));
-        expect(chip.center.dx, tester.getCenter(find.byType(IndicatorChip)).dx);
-        widths.add(chip.width);
-      }
-      expect(widths.first, widths.last);
-    });
-
-    testWidgets("no overflow under 2x text scaling", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        const MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(2)),
-          child: Center(child: IndicatorChip(label: _label, ratio: 0.55, icon: Icons.public)),
-        ),
-      );
-
-      expect(tester.takeException(), isNull);
-    });
-
-    testWidgets("sits directly in a Row (unbounded width) without error", (WidgetTester tester) async {
-      await pumpApp(
-        tester,
-        const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[IndicatorChip(label: _label, icon: Icons.public)],
-        ),
-      );
-
-      expect(tester.takeException(), isNull);
-      expect(find.text(_label), findsOneWidget);
-    });
-  });
-
-  group("dark theme", () {
-    testWidgets("smoke: every tone resolves from the dark StatusTones", (WidgetTester tester) async {
       await pumpApp(
         tester,
         Column(
           children: <Widget>[
-            for (final StatusTone tone in StatusTone.values)
-              IndicatorChip(label: tone.name, tone: tone, icon: tone.icon, ratio: 0.5),
+            for (final StatusTone tone in StatusTone.values) IndicatorChip(label: tone.name, tone: tone),
           ],
         ),
-        theme: AppTheme.dark(),
+        theme: theme,
       );
 
-      expect(tester.takeException(), isNull);
-      final BuildContext context = tester.element(find.byType(IndicatorChip).first);
-      expect(Theme.of(context).brightness, Brightness.dark);
+      final ColorScheme cs = theme.colorScheme;
+      final Map<String, Color> surfaces = <String, Color>{
+        "surface": cs.surface,
+        "surfaceContainerLowest": cs.surfaceContainerLowest,
+        "surfaceContainerLow": cs.surfaceContainerLow,
+        "surfaceContainer": cs.surfaceContainer,
+        "surfaceContainerHigh": cs.surfaceContainerHigh,
+        "surfaceContainerHighest": cs.surfaceContainerHighest,
+      };
       for (final StatusTone tone in StatusTone.values) {
-        final Color expected = StatusTones.colorsOf(context, tone).foreground;
-        final Text text = tester.widget<Text>(find.text("${tone.name} (50%)"));
-        expect(text.style?.color, expected);
+        final Finder chip = find.ancestor(of: find.text(tone.name), matching: find.byType(IndicatorChip));
+        final Color text = tester.widget<Text>(find.text(tone.name)).style!.color!;
+        final Container box = tester.widget<Container>(find.descendant(of: chip, matching: find.byType(Container)));
+        final Color fill = (box.decoration! as BoxDecoration).color!;
+        surfaces.forEach((String surfaceName, Color surface) {
+          expect(
+            _contrast(text, Color.alphaBlend(fill, surface)),
+            greaterThanOrEqualTo(4.5),
+            reason: "${tone.name} on $surfaceName",
+          );
+        });
       }
-      expect(
-        tester.widget<Text>(find.text("danger (50%)")).style?.color,
-        Theme.of(context).colorScheme.error,
-      );
     });
+  });
+}
+
+void _tooltipTests() {
+  testWidgets("no tooltip: no Tooltip and the chip keeps its compact height", (WidgetTester tester) async {
+    await pumpApp(tester, const Center(child: IndicatorChip(label: _label)));
+
+    expect(find.byType(Tooltip), findsNothing);
+    expect(tester.getSize(find.byType(IndicatorChip)).height, lessThan(kMinTapTarget));
+  });
+
+  testWidgets("an empty tooltip is treated as none", (WidgetTester tester) async {
+    await pumpApp(tester, const Center(child: IndicatorChip(label: _label, tooltip: "")));
+
+    expect(find.byType(Tooltip), findsNothing);
+  });
+
+  testWidgets("tap tooltip, no wait, 5 s, with a 48 dp hit area around the chip", (WidgetTester tester) async {
+    await pumpApp(tester, const Center(child: IndicatorChip(label: "A", tooltip: _tip)));
+
+    final Tooltip tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, _tip);
+    expect(tooltip.triggerMode, TooltipTriggerMode.tap);
+    expect(tooltip.waitDuration, Duration.zero);
+    expect(tooltip.showDuration, const Duration(seconds: 5));
+
+    final Size area = tester.getSize(find.byType(IndicatorChip));
+    expect(area.width, greaterThanOrEqualTo(kMinTapTarget));
+    expect(area.height, greaterThanOrEqualTo(kMinTapTarget));
+    expect(tester.getSize(_inChip(find.byType(Container))).height, lessThan(kMinTapTarget));
+    expect(
+      tester.getCenter(_inChip(find.byType(Container))),
+      tester.getCenter(find.byType(IndicatorChip)),
+    );
+  });
+
+  testWidgets("tapping the chip shows the message", (WidgetTester tester) async {
+    await pumpApp(tester, const Center(child: IndicatorChip(label: _label, tooltip: _tip)));
+
+    expect(find.text(_tip), findsNothing);
+    await tester.tap(find.text(_label));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text(_tip), findsOneWidget);
+
+    await _finishTooltipTimers(tester);
+  });
+
+  testWidgets("tapping the enlarged area outside the chip also shows the message", (WidgetTester tester) async {
+    await pumpApp(tester, const Center(child: IndicatorChip(label: "A", tooltip: _tip)));
+
+    final Rect area = tester.getRect(find.byType(IndicatorChip));
+    final Rect chip = tester.getRect(_inChip(find.byType(Container)));
+    final Offset outsideChip = Offset(area.center.dx, area.top + 2);
+    expect(chip.contains(outsideChip), isFalse);
+
+    await tester.tapAt(outsideChip);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text(_tip), findsOneWidget);
+
+    await _finishTooltipTimers(tester);
+  });
+}
+
+void _semanticsTests() {
+  testWidgets("without semanticsLabel the visible text is announced once", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(tester, const IndicatorChip(label: _label, ratio: 0.55, icon: Icons.public));
+
+    expect(find.bySemanticsLabel("$_label (55%)"), findsOneWidget);
+    handle.dispose();
+  });
+
+  testWidgets("semanticsLabel replaces the visible text", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(
+      tester,
+      const IndicatorChip(label: _label, ratio: 0.55, semanticsLabel: "Reference class: moderate"),
+    );
+
+    expect(find.bySemanticsLabel("Reference class: moderate"), findsOneWidget);
+    expect(find.bySemanticsLabel("$_label (55%)"), findsNothing);
+    handle.dispose();
+  });
+
+  testWidgets("two chips side by side keep separate labels", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(
+      tester,
+      const Row(
+        children: <Widget>[
+          IndicatorChip(label: "First"),
+          IndicatorChip(label: "Second"),
+        ],
+      ),
+    );
+
+    expect(find.bySemanticsLabel("First"), findsOneWidget);
+    expect(find.bySemanticsLabel("Second"), findsOneWidget);
+    handle.dispose();
+  });
+
+  for (final String? tip in <String?>[null, _tip]) {
+    testWidgets("is its own node inside a labelled container (tooltip: ${tip != null})",
+        (WidgetTester tester) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await pumpApp(
+        tester,
+        Semantics(
+          container: true,
+          label: "Card",
+          child: Column(children: <Widget>[IndicatorChip(label: _label, tooltip: tip)]),
+        ),
+      );
+
+      expect(find.bySemanticsLabel(_label), findsOneWidget);
+      expect(find.bySemanticsLabel("Card"), findsOneWidget);
+      final SemanticsNode chipNode = tester.getSemantics(find.bySemanticsLabel(_label));
+      final SemanticsNode cardNode = tester.getSemantics(find.bySemanticsLabel("Card"));
+      expect(chipNode.id, isNot(cardNode.id));
+      expect(cardNode.label, "Card");
+      expect(cardNode.tooltip, "");
+      expect(chipNode.tooltip, tip ?? "");
+      handle.dispose();
+    });
+  }
+
+  testWidgets("a tooltip chip exposes its label and its tooltip", (WidgetTester tester) async {
+    final SemanticsHandle handle = tester.ensureSemantics();
+    await pumpApp(tester, const Center(child: IndicatorChip(label: _label, tooltip: _tip)));
+
+    expect(find.bySemanticsLabel(_label), findsOneWidget);
+    expect(tester.getSemantics(find.bySemanticsLabel(_label)).tooltip, _tip);
+    handle.dispose();
+  });
+}
+
+void _layoutRobustnessTests() {
+  testWidgets("ellipsizes a long label in a 120 dp parent without overflow", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      const Center(
+        child: SizedBox(
+          width: 120,
+          child: IndicatorChip(
+            label: "A rather long indicator label that cannot fit",
+            ratio: 0.42,
+            icon: Icons.public,
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.byType(IndicatorChip)).width, lessThanOrEqualTo(120));
+  });
+
+  testWidgets("stays compact and centred under a tight width, with or without a tooltip",
+      (WidgetTester tester) async {
+    final List<double> widths = <double>[];
+    for (final String? tip in <String?>[null, _tip]) {
+      await pumpApp(
+        tester,
+        Center(
+          child: SizedBox(
+            width: 300,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[IndicatorChip(label: "A", tooltip: tip)],
+            ),
+          ),
+        ),
+      );
+
+      final Rect chip = tester.getRect(_inChip(find.byType(Container)));
+      expect(chip.width, lessThan(kMinTapTarget * 2));
+      expect(chip.center.dx, tester.getCenter(find.byType(IndicatorChip)).dx);
+      widths.add(chip.width);
+    }
+    expect(widths.first, widths.last);
+  });
+
+  testWidgets("no overflow under 2x text scaling", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      const MediaQuery(
+        data: MediaQueryData(textScaler: TextScaler.linear(2)),
+        child: Center(child: IndicatorChip(label: _label, ratio: 0.55, icon: Icons.public)),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("sits directly in a Row (unbounded width) without error", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[IndicatorChip(label: _label, icon: Icons.public)],
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text(_label), findsOneWidget);
+  });
+}
+
+void _darkThemeTests() {
+  testWidgets("smoke: every tone resolves from the dark StatusTones", (WidgetTester tester) async {
+    await pumpApp(
+      tester,
+      Column(
+        children: <Widget>[
+          for (final StatusTone tone in StatusTone.values)
+            IndicatorChip(label: tone.name, tone: tone, icon: tone.icon, ratio: 0.5),
+        ],
+      ),
+      theme: AppTheme.dark(),
+    );
+
+    expect(tester.takeException(), isNull);
+    final BuildContext context = tester.element(find.byType(IndicatorChip).first);
+    expect(Theme.of(context).brightness, Brightness.dark);
+    for (final StatusTone tone in StatusTone.values) {
+      final Color expected = StatusTones.colorsOf(context, tone).foreground;
+      final Text text = tester.widget<Text>(find.text("${tone.name} (50%)"));
+      expect(text.style?.color, expected);
+    }
+    expect(
+      tester.widget<Text>(find.text("danger (50%)")).style?.color,
+      Theme.of(context).colorScheme.error,
+    );
   });
 }

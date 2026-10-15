@@ -2,8 +2,9 @@
 //
 // Widget tests for PolygonFormSheet (lib/widgets/custom/PolygonFormSheet/):
 // picker phase and selection loading (success and failure; drawing, name
-// and map camera kept and focus dropped across a round trip), drawing through the composed MapPolygonEditor (hint,
-// counter, undo / reset, vertex semantics, crossing-edge hint, vertex drags
+// and map camera kept and focus dropped across a round trip), drawing
+// through the composed MapPolygonEditor (hint, counter, undo / reset,
+// vertex semantics, crossing-edge hint, vertex drags
 // and map pans that never scroll the form or drag the sheet), forwarded map
 // parameters (camera, zoom limits, attribution), label overrides, the name
 // field's semantics, submit gating, the submit lifecycle (result payload,

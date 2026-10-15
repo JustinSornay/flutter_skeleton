@@ -2,7 +2,7 @@
 //
 // DistributionBar — a part-of-whole breakdown: one stacked horizontal bar
 // whose slices are each segment's share of the total, and a wrapping legend
-// ("label · 42 %") under it, inside a bordered card with an optional title
+// ("label · 42%") under it, inside a bordered card with an optional title
 // (a SectionCard when titled). The value class lives in segment.dart, the
 // tree in view.dart and its private pieces (bar, legend entry) in widgets/.
 
@@ -49,7 +49,7 @@ part "widgets/stacked_bar.dart";
 /// contrast). Beyond seven segments the cycle repeats, so pass explicit
 /// colours or tones when every slice must be told apart.
 ///
-/// Legend text: [legendTextBuilder], else `"label · NN %"` with the share
+/// Legend text: [legendTextBuilder], else `"label · <percent>"` with the share
 /// formatted by intl `NumberFormat.percentPattern` for the ambient locale
 /// (`Localizations.maybeLocaleOf`), e.g. `42%` in English, `42\u00A0%` in
 /// French (a no-break space, U+00A0, before the sign).

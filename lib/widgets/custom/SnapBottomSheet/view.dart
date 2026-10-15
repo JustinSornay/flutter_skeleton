@@ -5,8 +5,8 @@
 // is a cs.surfaceContainerLow box with 16 dp top corners and a soft
 // cs.shadow, hosting a transparent Material. Inside, the grip (handle +
 // optional header, draggable, measured) sits above the body, which is built
-// with the sheet's ScrollController and watched for scroll notifications
-// (widgets/sheet_layout.dart). ColorScheme tokens only.
+// with the sheet's ScrollController and watched for scroll and metrics
+// notifications (widgets/sheet_layout.dart). ColorScheme tokens only.
 
 part of "index.dart";
 
@@ -62,9 +62,12 @@ mixin _ViewMixin {
               ],
             ),
           ),
-          body: NotificationListener<ScrollNotification>(
-            onNotification: state._onBodyScroll,
-            child: widget.builder(context, scrollController),
+          body: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (ScrollMetricsNotification notification) => state._onBodyMetrics(scrollController),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: state._onBodyScroll,
+              child: widget.builder(context, scrollController),
+            ),
           ),
         ),
       ),

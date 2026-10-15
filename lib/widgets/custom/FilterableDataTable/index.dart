@@ -5,14 +5,14 @@
 // (ChoiceChipRow, "all" first) and a horizontally scrolling, sortable
 // Material DataTable whose columns the caller declares (DataTableColumnSpec,
 // column_spec.dart). The host filters and sorts the rows. The card lives in
-// view.dart; the header, table and delta pill in widgets/.
+// view.dart; the header, table and delta pill (a StatusPill) in widgets/.
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/ChoiceChipRow/index.dart";
-import "package:flutter_skeleton/widgets/custom/PillBadge/index.dart";
+import "package:flutter_skeleton/widgets/custom/StatusPill/index.dart";
 import "package:flutter_skeleton/widgets/custom/_base/choice_option.dart";
 
 part "column_spec.dart";
@@ -60,9 +60,10 @@ part "widgets/table.dart";
 /// [kMinTapTarget] wide; no checkbox column is ever shown. Rows are as tall
 /// as their tallest cell, with a 40 dp minimum otherwise.
 ///
-/// Tones: the table has no tone logic. Cells are built by the caller, except
-/// the built-in [DataTableColumnSpec.delta] pill (success / danger tones from
-/// `StatusTones`, always with an arrow glyph and a value).
+/// Tones: the table resolves no colours itself. Cells are built by the
+/// caller; the built-in [DataTableColumnSpec.delta] column only picks a
+/// [StatusTone] (success / danger) for a `StatusPill`, always with an arrow
+/// glyph and a value.
 ///
 /// Overlay: a column with a [DataTableColumnSpec.tooltip] wraps its header
 /// in a [Tooltip], which **needs an `Overlay` ancestor** (a routed page or a

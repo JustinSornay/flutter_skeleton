@@ -45,8 +45,10 @@ final class _ComparisonReadout extends StatelessWidget {
     final TextStyle base = (Theme.of(context).textTheme.labelSmall ?? const TextStyle())
         .copyWith(fontSize: 11, height: 1.15);
     final StatusTone? tone = connectorTone;
+    // heightFactor 1: end-aligned without taking a bounded parent's height.
     return Align(
       alignment: AlignmentDirectional.centerEnd,
+      heightFactor: 1,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Row(

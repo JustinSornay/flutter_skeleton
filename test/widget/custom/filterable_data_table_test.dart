@@ -20,6 +20,7 @@ import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/ChoiceChipRow/index.dart";
 import "package:flutter_skeleton/widgets/custom/FilterableDataTable/index.dart";
+import "package:flutter_skeleton/widgets/custom/StatusPill/index.dart";
 import "package:flutter_skeleton/widgets/custom/_base/choice_option.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:shared_preferences/shared_preferences.dart";
@@ -124,7 +125,7 @@ ToneColors _tone(WidgetTester tester, StatusTone tone) {
   return StatusTones.colorsOf(tester.element(find.byType(DataTable)), tone);
 }
 
-/// Fill of the PillBadge container holding [text].
+/// Fill of the pill container holding [text].
 Color? _pillFill(WidgetTester tester, String text) {
   final Container pill = tester.widget<Container>(
     find.ancestor(of: find.text(text), matching: find.byType(Container)).first,
@@ -473,6 +474,7 @@ void _deltaTests() {
 
       expect(find.text("▲ 5.0%"), findsOneWidget);
       expect(find.bySemanticsLabel(_upKey), findsOneWidget);
+      expect(tester.widget<StatusPill>(find.byType(StatusPill)).tone, StatusTone.success);
       final ToneColors success = _tone(tester, StatusTone.success);
       expect(_textColor(tester, "▲ 5.0%"), success.onContainer);
       expect(_pillFill(tester, "▲ 5.0%"), success.container);
@@ -485,6 +487,7 @@ void _deltaTests() {
 
       expect(find.text("▼ 10.0%"), findsOneWidget);
       expect(find.bySemanticsLabel(_downKey), findsOneWidget);
+      expect(tester.widget<StatusPill>(find.byType(StatusPill)).tone, StatusTone.danger);
       final ToneColors danger = _tone(tester, StatusTone.danger);
       expect(_textColor(tester, "▼ 10.0%"), danger.onContainer);
       expect(_pillFill(tester, "▼ 10.0%"), danger.container);

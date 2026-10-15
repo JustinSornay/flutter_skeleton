@@ -6,7 +6,8 @@
 // raw values, the gradient segment, dot positions, lowerIsBetter, clamping,
 // the direction tone of the connector and its tone icon, default and custom
 // colours, the single semantics node, a translated template in another
-// order, the max > min assert, the scaled-down readout and the dark theme.
+// order, the max > min assert, the row height under a bounded parent, the
+// scaled-down readout and the dark theme.
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
@@ -505,6 +506,19 @@ void main() {
       expect(tester.getRect(readout).width, lessThan(80));
       expect(tester.getRect(readout).left, greaterThanOrEqualTo(240 - 80));
       expect(icon.right, lessThanOrEqualTo(240));
+    });
+
+    testWidgets("keeps its own height under a bounded parent", (WidgetTester tester) async {
+      await _pumpBar(tester, _bar());
+
+      // _pumpBar offers 200 dp of height; the row takes only its tallest
+      // column (the 14 dp track area here) plus 4 dp of padding above and below.
+      final double content = <double>[
+        tester.getSize(find.text("Throughput")).height,
+        tester.getSize(find.text("62% → 78%")).height,
+        14,
+      ].reduce((double a, double b) => a > b ? a : b);
+      expect(tester.getSize(find.byType(ComparisonBar)).height, moreOrLessEquals(content + 8));
     });
 
     testWidgets("caps the label and the sublabel at two lines with an ellipsis", (WidgetTester tester) async {

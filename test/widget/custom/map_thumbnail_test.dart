@@ -3,19 +3,19 @@
 // Widget tests for MapThumbnail: constructor presets, box geometry, map
 // options (centre, zoom, no gestures, background), the host tile layer,
 // the default MapPin and its anchoring, a custom pin, semantics, pointer
-// pass-through, camera updates, a dark-theme smoke test and the real default
-// label (argument order, rounding, locale decimal separator) through an
-// in-memory EasyLocalization. Tiles come from an in-memory TileProvider, so
+// pass-through, camera updates (with the provider lifecycle of a TileLayer
+// built per host build), failing tiles, a dark-theme smoke test and the real
+// default label (argument order, rounding, locale decimal separator) through
+// an in-memory EasyLocalization. Tiles come from an in-memory TileProvider, so
 // no network is used. The localized tests reset the easy_localization
 // singleton, so the raw-key tests pass in any order.
-
-import "dart:typed_data";
 
 import "package:easy_localization/easy_localization.dart";
 // Localization.load is the only way to empty the translations singleton that
 // EasyLocalization fills; see _pumpLocalized.
 // ignore: implementation_imports
 import "package:easy_localization/src/localization.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
@@ -39,14 +39,45 @@ final Uint8List _kTransparentPng = Uint8List.fromList(<int>[
   0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
 ]);
 
-/// Serves every tile from memory (no network) and counts the requests.
+/// Serves every tile from memory (no network), counts the requests and
+/// records its disposal.
 final class _MemoryTileProvider extends TileProvider {
   int requests = 0;
+  bool disposed = false;
 
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
     requests++;
     return MemoryImage(_kTransparentPng);
+  }
+
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
+}
+
+/// Image that always fails to load.
+final class _BrokenImage extends ImageProvider<_BrokenImage> {
+  const _BrokenImage();
+
+  @override
+  Future<_BrokenImage> obtainKey(ImageConfiguration configuration) {
+    return Future<_BrokenImage>.value(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(_BrokenImage key, ImageDecoderCallback decode) {
+    return OneFrameImageStreamCompleter(Future<ImageInfo>.error(StateError("tile unavailable")));
+  }
+}
+
+/// Every tile fails to load.
+final class _BrokenTileProvider extends TileProvider {
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
+    return const _BrokenImage();
   }
 }
 
@@ -209,13 +240,58 @@ void main() {
     });
 
     testWidgets("new centre or zoom recentres the camera", (WidgetTester tester) async {
-      final TileLayer layer = _tileLayer();
-      await _pump(tester, MapThumbnail(lat: 48.86, lon: 2.35, tileLayer: layer));
+      // A new TileLayer per build, as the dartdoc asks of hosts.
+      final _MemoryTileProvider first = _MemoryTileProvider();
+      await _pump(tester, MapThumbnail(lat: 48.86, lon: 2.35, tileLayer: _tileLayer(first)));
       expect(_camera(tester).center, const LatLng(48.86, 2.35));
 
-      await _pump(tester, MapThumbnail(lat: 43.32, lon: 1.95, tileLayer: layer, zoom: 8));
+      final _MemoryTileProvider second = _MemoryTileProvider();
+      await _pump(tester, MapThumbnail(lat: 43.32, lon: 1.95, tileLayer: _tileLayer(second), zoom: 8));
+      await tester.pump(const Duration(milliseconds: 300));
       expect(_camera(tester).center, const LatLng(43.32, 1.95));
       expect(_camera(tester).zoom, 8);
+      // The remounted map serves the new layer; the old map disposed its own.
+      expect(first.disposed, isTrue);
+      expect(second.disposed, isFalse);
+      expect(second.requests, greaterThan(0));
+    });
+
+    testWidgets("unchanged centre keeps the map and its provider", (WidgetTester tester) async {
+      final _MemoryTileProvider first = _MemoryTileProvider();
+      await _pump(tester, MapThumbnail(lat: 48.86, lon: 2.35, tileLayer: _tileLayer(first)));
+      final State<FlutterMap> before = tester.state<State<FlutterMap>>(find.byType(FlutterMap));
+
+      await _pump(tester, MapThumbnail(lat: 48.86, lon: 2.35, tileLayer: _tileLayer()));
+      expect(tester.state<State<FlutterMap>>(find.byType(FlutterMap)), same(before));
+      expect(first.disposed, isFalse);
+    });
+
+    testWidgets("failing tiles throw nothing and reach the host's errorTileCallback", (WidgetTester tester) async {
+      int errors = 0;
+      final DebugPrintCallback originalDebugPrint = debugPrint;
+      // flutter_map debugPrints every tile error; keep the test output clean.
+      debugPrint = (String? message, {int? wrapWidth}) {};
+      try {
+        await _pump(
+          tester,
+          MapThumbnail(
+            lat: 48.86,
+            lon: 2.35,
+            tileLayer: TileLayer(
+              urlTemplate: "https://tiles.example.test/{z}/{x}/{y}.png",
+              userAgentPackageName: "com.example.test",
+              tileProvider: _BrokenTileProvider(),
+              errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) => errors++,
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 300));
+      } finally {
+        debugPrint = originalDebugPrint;
+      }
+      expect(tester.takeException(), isNull);
+      expect(errors, greaterThan(0));
+      expect(find.byType(MapPin), findsOneWidget);
     });
   });
 

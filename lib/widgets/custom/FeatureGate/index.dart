@@ -86,7 +86,7 @@ enum GateDisplayMode {
 ///   isLocked: !access.canExport,
 ///   lockedLabel: "export.title".tr(),
 ///   badgeLabel: "Plus",
-///   onUnlock: () => context.go("/plans"),
+///   onUnlock: showAccessOptions, // host navigation / analytics
 ///   child: const ExportButton(),
 /// )
 /// ```

@@ -88,7 +88,7 @@ mixin _ViewMixin {
     );
   }
 
-  /// Host-built legend text, or `"label · NN %"`.
+  /// Host-built legend text, or `"label · <percent>"`.
   String _legendText(BuildContext context, DistributionBar widget, DistributionBarSegment segment, double share) {
     final String Function(DistributionBarSegment segment, double share)? builder = widget.legendTextBuilder;
     if (builder != null) return builder(segment, share);

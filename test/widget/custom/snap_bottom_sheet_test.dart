@@ -8,9 +8,11 @@
 // 48 dp target, semantics and hints), grip and header drags (nearest height,
 // fling direction, no notification for passed heights), body drags written
 // back into the controller (also when they interrupt a move from code or
-// the host rebuilds mid-drag), reduced motion, controller swaps (listeners
-// moved and removed), fraction changes under a listening host, theme tokens
-// under the light and dark themes, and the fraction asserts.
+// the host rebuilds mid-drag), reduced motion (also a move during a list
+// fling), a body whose list attaches late or is rebuilt (moves replayed,
+// not during a grip drag), controller swaps (listeners moved and removed),
+// fraction changes under a listening host, theme tokens under the light and
+// dark themes, and the fraction asserts.
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
@@ -386,7 +388,8 @@ void main() {
     });
 
     testWidgets("is a focusable 48 dp button with a label and an expand / collapse hint", (WidgetTester tester) async {
-      final SemanticsHandle semantics = tester.ensureSemantics();
+      // testWidgets enables semantics (semanticsEnabled defaults to true) and
+      // disposes that handle itself, also when an expectation fails.
       final SnapBottomSheetController controller = _controller();
       await _pump(tester, controller);
 
@@ -416,7 +419,6 @@ void main() {
         hasFocusAction: true,
         onTapHint: _collapseKey,
       ));
-      semantics.dispose();
     });
 
     testWidgets("takes keyboard focus, and Enter / Space cycle the height", (WidgetTester tester) async {
@@ -627,6 +629,150 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(_sheetHeight(tester), moreOrLessEquals(_fullHeight));
       expect(controller.snap, SheetSnap.full);
+    });
+
+    testWidgets("a move from code during a list fling notifies once", (WidgetTester tester) async {
+      final SnapBottomSheetController controller = _controller(SheetSnap.full);
+      late ScrollController scroll;
+      await _pump(
+        tester,
+        controller,
+        reduceMotion: true,
+        builder: (BuildContext context, ScrollController scrollController) {
+          scroll = scrollController;
+          return _list(context, scrollController);
+        },
+      );
+      final List<SheetSnap> seen = <SheetSnap>[];
+      controller.addListener(() => seen.add(controller.snap));
+
+      await tester.fling(find.text("Item 1"), const Offset(0, -200), 2000);
+      await tester.pump();
+      expect(scroll.position.isScrollingNotifier.value, isTrue);
+
+      controller.setSnap(SheetSnap.collapsed);
+      await tester.pumpAndSettle();
+
+      expect(seen, <SheetSnap>[SheetSnap.collapsed]);
+      expect(_sheetHeight(tester), moreOrLessEquals(_collapsedHeight));
+    });
+  });
+
+  group("body attached late", () {
+    /// A body that shows a placeholder until [loaded] is true, then the list.
+    Widget Function(BuildContext context, ScrollController scrollController) lateList(ValueNotifier<bool> loaded) {
+      return (BuildContext context, ScrollController scrollController) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: loaded,
+          builder: (BuildContext context, bool isLoaded, Widget? child) {
+            return isLoaded ? _list(context, scrollController) : const Center(child: Text("Placeholder"));
+          },
+        );
+      };
+    }
+
+    ValueNotifier<bool> loadedNotifier(bool initial) {
+      final ValueNotifier<bool> loaded = ValueNotifier<bool>(initial);
+      addTearDown(loaded.dispose);
+      return loaded;
+    }
+
+    testWidgets("a move requested before the list attaches is applied once it does", (WidgetTester tester) async {
+      final SnapBottomSheetController controller = _controller();
+      final ValueNotifier<bool> loaded = loadedNotifier(false);
+      await _pump(tester, controller, builder: lateList(loaded));
+      final ValueGetter<int> count = _countNotifications(controller);
+
+      controller.setSnap(SheetSnap.full);
+      await tester.pumpAndSettle();
+      // Nothing to drive the sheet yet.
+      expect(_sheetHeight(tester), moreOrLessEquals(_midHeight));
+
+      loaded.value = true;
+      await tester.pumpAndSettle();
+      expect(_sheetHeight(tester), moreOrLessEquals(_fullHeight));
+      expect(controller.snap, SheetSnap.full);
+      expect(count(), 1);
+
+      expect(controller.stepDown(), isTrue);
+      await tester.pumpAndSettle();
+      expect(_sheetHeight(tester), moreOrLessEquals(_midHeight));
+      expect(controller.snap, SheetSnap.mid);
+    });
+
+    testWidgets("handle taps before the list attaches are applied once it does", (WidgetTester tester) async {
+      final SnapBottomSheetController controller = _controller(SheetSnap.collapsed);
+      final ValueNotifier<bool> loaded = loadedNotifier(false);
+      await _pump(tester, controller, builder: lateList(loaded));
+
+      await _tapHandle(tester);
+      await _tapHandle(tester);
+      expect(controller.snap, SheetSnap.full);
+
+      loaded.value = true;
+      await tester.pumpAndSettle();
+      expect(_sheetHeight(tester), moreOrLessEquals(_fullHeight));
+    });
+
+    testWidgets("a move cut short by a rebuilt list resumes on the new list", (WidgetTester tester) async {
+      final SnapBottomSheetController controller = _controller();
+      final ValueNotifier<bool> loaded = loadedNotifier(true);
+      await _pump(tester, controller, builder: lateList(loaded));
+
+      controller.setSnap(SheetSnap.full);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // Detaching the list stops the move part-way.
+      loaded.value = false;
+      await tester.pumpAndSettle();
+      expect(_sheetHeight(tester), inExclusiveRange(_midHeight, _fullHeight));
+
+      loaded.value = true;
+      await tester.pumpAndSettle();
+      expect(_sheetHeight(tester), moreOrLessEquals(_fullHeight));
+      expect(controller.snap, SheetSnap.full);
+    });
+
+    testWidgets("a list rebuilt during a grip drag leaves the sheet under the finger", (WidgetTester tester) async {
+      final SnapBottomSheetController controller = _controller();
+      final ValueNotifier<int> listKey = ValueNotifier<int>(0);
+      addTearDown(listKey.dispose);
+      await _pump(
+        tester,
+        controller,
+        builder: (BuildContext context, ScrollController scrollController) {
+          return ValueListenableBuilder<int>(
+            valueListenable: listKey,
+            builder: (BuildContext context, int key, Widget? child) {
+              return KeyedSubtree(key: ValueKey<int>(key), child: _list(context, scrollController));
+            },
+          );
+        },
+      );
+
+      final TestGesture gesture = await tester.startGesture(_handleCenter(tester));
+      await gesture.moveBy(const Offset(0, -40));
+      await tester.pump(const Duration(milliseconds: 16));
+      await gesture.moveBy(const Offset(0, -40));
+      await tester.pump(const Duration(milliseconds: 16));
+      final double before = _sheetHeight(tester);
+      expect(before, greaterThan(_midHeight));
+
+      listKey.value = 1;
+      // Rebuild, then enough frames for a (wrong) move to show.
+      for (int i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(_sheetHeight(tester), moreOrLessEquals(before));
+
+      await gesture.moveBy(const Offset(0, -40));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(_sheetHeight(tester), moreOrLessEquals(before + 40));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(controller.snap, SheetSnap.mid);
+      expect(_sheetHeight(tester), moreOrLessEquals(_midHeight));
     });
   });
 

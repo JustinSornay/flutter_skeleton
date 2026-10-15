@@ -11,6 +11,7 @@ import "dart:ui" show SemanticsFlag;
 
 import "package:fl_chart/fl_chart.dart";
 import "package:flutter/material.dart";
+import "package:flutter/rendering.dart" show SemanticsNode;
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/widgets/custom/Sparkline/index.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -196,7 +197,9 @@ void main() {
       await pumpApp(tester, Center(child: Sparkline(values: _rising)));
 
       expect(find.semantics.byFlag(SemanticsFlag.isImage), findsNothing);
-      expect(tester.getSemantics(find.byType(Sparkline)), isNot(matchesSemantics(isImage: true)));
+      final SemanticsNode node = tester.getSemantics(find.byType(Sparkline));
+      expect(node, isNot(isSemantics(isImage: true)));
+      expect(node.label, isEmpty);
       handle.dispose();
     });
 

@@ -3,8 +3,9 @@
 // _ScoreListRow — one scored row of ScoreListCard: title + optional italic
 // subtitle, a 6 dp bar (track cs.surfaceContainerHighest, radius 999, fill =
 // tone foreground) with the score text in the same tone (a 32–96 dp slot,
-// ellipsised), and an optional wrapping caption. A single semantics node; ink and button semantics only when the
-// row has a tap handler. At least kMinTapTarget tall.
+// ellipsised), and an optional wrapping caption. A single semantics node; ink
+// and button semantics only when the row has a tap handler. At least
+// kMinTapTarget tall.
 
 part of "../index.dart";
 

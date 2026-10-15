@@ -52,6 +52,20 @@ final class _FakeSearch {
   }
 }
 
+Widget _labelRow(BuildContext context, _Item item) => Text(item.label);
+
+/// Places [child] 360 dp wide near the top-left corner.
+Widget _frame(Widget child) {
+  return Padding(
+    padding: const EdgeInsets.all(kDefaultPadding * 2),
+    child: Align(
+      alignment: Alignment.topLeft,
+      child: SizedBox(width: 360, child: child),
+    ),
+  );
+}
+
+/// The widget with the default length, debounce and size, in [_frame].
 Widget _host({
   required Future<List<_Item>> Function(String query) search,
   ValueChanged<_Item>? onSelected,
@@ -60,32 +74,16 @@ Widget _host({
   String? hintText,
   String? noResultsText,
   Widget Function(BuildContext context, _Item item)? itemBuilder,
-  int minQueryLength = 2,
-  Duration debounce = _debounce,
-  double dropdownWidth = 320,
-  double dropdownMaxHeight = 280,
 }) {
-  return Padding(
-    padding: const EdgeInsets.all(kDefaultPadding * 2),
-    child: Align(
-      alignment: Alignment.topLeft,
-      child: SizedBox(
-        width: 360,
-        child: AutocompleteSearch<_Item>(
-          search: search,
-          itemBuilder:
-              itemBuilder ?? (BuildContext context, _Item item) => Text(item.label),
-          onSelected: onSelected ?? (_Item item) {},
-          onError: onError,
-          selectionLabel: selectionLabel,
-          hintText: hintText,
-          noResultsText: noResultsText,
-          minQueryLength: minQueryLength,
-          debounce: debounce,
-          dropdownWidth: dropdownWidth,
-          dropdownMaxHeight: dropdownMaxHeight,
-        ),
-      ),
+  return _frame(
+    AutocompleteSearch<_Item>(
+      search: search,
+      itemBuilder: itemBuilder ?? _labelRow,
+      onSelected: onSelected ?? (_Item item) {},
+      onError: onError,
+      selectionLabel: selectionLabel,
+      hintText: hintText,
+      noResultsText: noResultsText,
     ),
   );
 }
@@ -211,12 +209,16 @@ void main() {
       final _FakeSearch search = _FakeSearch();
       await pumpApp(
         tester,
-        _host(
-          search: search.call,
-          minQueryLength: 3,
-          debounce: const Duration(milliseconds: 100),
-          dropdownWidth: 200,
-          dropdownMaxHeight: 150,
+        _frame(
+          AutocompleteSearch<_Item>(
+            search: search.call,
+            itemBuilder: _labelRow,
+            onSelected: (_Item item) {},
+            minQueryLength: 3,
+            debounce: const Duration(milliseconds: 100),
+            dropdownWidth: 200,
+            dropdownMaxHeight: 150,
+          ),
         ),
         surfaceSize: const Size(800, 1200),
       );

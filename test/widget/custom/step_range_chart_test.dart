@@ -10,12 +10,13 @@
 // under pumpApp, real fr / en strings through EasyLocalization), repaint
 // decisions, asserts and the dark theme. Caption weights and inks are
 // unit-tested in test/unit/widgets/step_range_chart_captions_test.dart; the
-// painter's ink → colour switch is not asserted here, since painted
-// paragraphs are disposed and expose no style.
+// painted caption colours (each ink's palette colour, the band tone) are
+// sampled from a rendered image, since painted paragraphs expose no style.
 
 import "dart:convert";
 import "dart:io";
-import "dart:ui" show PathMetric;
+import "dart:typed_data";
+import "dart:ui" as ui;
 
 import "package:easy_localization/easy_localization.dart" hide TextDirection;
 // Localization.load is the only way to empty the translations singleton that
@@ -114,7 +115,7 @@ List<double> _stepContours(WidgetTester tester) {
         return true;
       }),
   );
-  return <double>[for (final PathMetric metric in captured!.computeMetrics()) metric.length];
+  return <double>[for (final ui.PathMetric metric in captured!.computeMetrics()) metric.length];
 }
 
 /// The semantics label of the chart node.
@@ -167,6 +168,61 @@ bool Function(Symbol method, List<dynamic> arguments) _scaledBy(double factor) {
       method == #scale && arguments[0] == factor && arguments[1] == factor;
 }
 
+/// Key of the RepaintBoundary that [_pumpForPixels] puts around the chart.
+const Key _boundary = Key("boundary");
+
+/// Pumps [chart] at twice the design viewport (840 wide, scale 2) inside a
+/// RepaintBoundary, so its captions are large enough to sample.
+Future<void> _pumpForPixels(WidgetTester tester, StepRangeChart chart) async {
+  await pumpApp(
+    tester,
+    Center(
+      child: SizedBox(
+        width: 2 * _width,
+        child: RepaintBoundary(key: _boundary, child: chart),
+      ),
+    ),
+    surfaceSize: const Size(1000, 600),
+  );
+}
+
+/// Unpremultiplied colours of the rendered pixels at the viewport [points]
+/// (scale 2), over a transparent background. The test font paints every
+/// glyph as a solid box, so a caption's centre carries its text colour.
+Future<List<Color>> _pixelsAt(WidgetTester tester, List<Offset> points) async {
+  final RenderRepaintBoundary render = tester.renderObject<RenderRepaintBoundary>(find.byKey(_boundary));
+  final List<Color>? colors = await tester.runAsync<List<Color>>(() async {
+    final ui.Image image = await render.toImage();
+    final ByteData data = (await image.toByteData(format: ui.ImageByteFormat.rawStraightRgba))!;
+    final int width = image.width;
+    image.dispose();
+    return <Color>[
+      for (final Offset point in points)
+        if (((2 * point.dy).floor() * width + (2 * point.dx).floor()) * 4 case final int i)
+          Color.fromARGB(data.getUint8(i + 3), data.getUint8(i), data.getUint8(i + 1), data.getUint8(i + 2)),
+    ];
+  });
+  return colors!;
+}
+
+/// 8-bit alpha, red, green and blue of [color].
+List<int> _channels(Color color) {
+  return <int>[for (final double c in <double>[color.a, color.r, color.g, color.b]) (c * 255).round()];
+}
+
+/// Matches a pixel within 3 per 8-bit channel of [expected] (unpremultiplying
+/// a translucent pixel rounds).
+Matcher _ink(Color expected) {
+  final List<int> want = _channels(expected);
+  return predicate<Color>((Color actual) {
+    final List<int> got = _channels(actual);
+    for (int i = 0; i < want.length; i++) {
+      if ((got[i] - want[i]).abs() > 3) return false;
+    }
+    return true;
+  }, "a pixel close to $expected");
+}
+
 StepRangeColumn _column({double? value, double? low, double? high, int flex = 1}) {
   return StepRangeColumn(label: "A", value: value, low: low, high: high, flex: flex);
 }
@@ -175,45 +231,16 @@ StepRangeChart _chartWithAxis(double minValue, double maxValue) {
   return StepRangeChart(columns: _columns, minValue: minValue, maxValue: maxValue);
 }
 
-/// The widget's i18n fragment, served until the real translation files hold
-/// `custom.step_range_chart`.
-const Map<String, Map<String, String>> _fragment = <String, Map<String, String>>{
-  "fr": <String, String>{
-    "axis": "échelle de {min} à {max}",
-    "band": "{label} : de {from} à {to}",
-    "value": "{label} : {value}",
-    "range": "plage de {low} à {high}",
-    "locked": "{label} : verrouillé",
-    "unavailable": "{label} : non disponible",
-    "selected": "sélectionné",
-  },
-  "en": <String, String>{
-    "axis": "scale {min} to {max}",
-    "band": "{label}: {from} to {to}",
-    "value": "{label}: {value}",
-    "range": "range {low} to {high}",
-    "locked": "{label}: locked",
-    "unavailable": "{label}: not available",
-    "selected": "selected",
-  },
-};
-
-/// Reads the real `<path>/<lang>.json` once it holds
-/// `custom.step_range_chart`, so the expectations below check the shipped
-/// strings; until then it serves [_fragment]. Synchronous I/O, so it
-/// completes under the test's fake async clock.
+/// Reads the shipped `<path>/<lang>.json`, so the expectations below check
+/// the real strings. Synchronous I/O, so it completes under the test's fake
+/// async clock.
 final class _TranslationsLoader extends AssetLoader {
   const _TranslationsLoader();
 
   @override
   Future<Map<String, dynamic>?> load(String path, Locale locale) async {
     final File file = File("$path/${locale.languageCode}.json");
-    final Map<String, dynamic> assets = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-    final Object? custom = assets["custom"];
-    if (custom is Map<String, dynamic> && custom.containsKey("step_range_chart")) return assets;
-    return <String, dynamic>{
-      "custom": <String, dynamic>{"step_range_chart": _fragment[locale.languageCode]},
-    };
+    return jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
   }
 }
 
@@ -454,6 +481,68 @@ void main() {
       ]);
       // The sizes above differ enough to be told apart.
       expect(_textSize(tester, "50", 11).height, isNot(moreOrLessEquals(_textSize(tester, "50", 10).height)));
+    });
+
+    testWidgets("captions: painted inks per column state, band tone and bounds", (WidgetTester tester) async {
+      final Color line = AppTheme.light().colorScheme.tertiary;
+      await _pumpForPixels(
+        tester,
+        StepRangeChart(
+          columns: const <StepRangeColumn>[
+            StepRangeColumn(label: "W", sublabel: "W", value: 50),
+            StepRangeColumn(label: "W", sublabel: "W", value: 50, emphasized: true),
+            StepRangeColumn(label: "W", sublabel: "W", value: 50),
+            StepRangeColumn(label: "W", sublabel: "W"),
+            StepRangeColumn.locked(label: "W", sublabel: "W"),
+          ],
+          selectedIndex: 2,
+          bands: const <ValueBand>[ValueBand(from: 50, to: 100, tone: StatusTone.success, label: "W")],
+          valueFormatter: (double value) => "W",
+          color: line,
+        ),
+      );
+      final ColorScheme cs = _scheme(tester);
+      final Color label = cs.onSurfaceVariant;
+      final Color muted = label.withValues(alpha: 0.5);
+      final Color tone = _tone(tester, StatusTone.success).foreground;
+      // The five inks differ enough to be told apart.
+      final List<Color> inks = <Color>[label, cs.onSurface, line, muted, tone];
+      for (int i = 0; i < inks.length; i++) {
+        for (int j = i + 1; j < inks.length; j++) {
+          expect(inks[j], isNot(_ink(inks[i])));
+        }
+      }
+
+      // Five columns of 74: centres 77, 151, 225, 299 and 373. Every caption
+      // is one glyph ("W", or "—" without a value), sampled at its centre.
+      final List<Color> captions = await _pixelsAt(tester, <Offset>[
+        for (final double x in <double>[77, 151, 225, 299, 373]) ...<Offset>[
+          Offset(x, 148),
+          Offset(x, 159),
+          Offset(x, 173),
+        ],
+      ]);
+      expect(captions, <Matcher>[
+        // Plain: name, sublabel and value in the label ink.
+        _ink(label), _ink(label), _ink(label),
+        // Emphasized: the value in onSurface.
+        _ink(label), _ink(label), _ink(cs.onSurface),
+        // Selected: everything in the line colour.
+        _ink(line), _ink(line), _ink(line),
+        // Valueless, then locked: muted.
+        _ink(muted), _ink(muted), _ink(muted),
+        _ink(muted), _ink(muted), _ink(muted),
+      ]);
+
+      // Gutter, right-aligned on x 34: the band label centred in its band
+      // (y 14..74) in the band tone, then the bounds in the label ink.
+      final double gutterX = 34 - _textSize(tester, "W", 7).width / 2;
+      final List<Color> gutter = await _pixelsAt(tester, <Offset>[
+        Offset(gutterX, 44),
+        Offset(gutterX, 14),
+        Offset(gutterX, 134),
+      ]);
+      expect(gutter, <Matcher>[_ink(tone), _ink(label), _ink(label)]);
     });
 
     testWidgets("captions are ellipsised to the column width", (WidgetTester tester) async {

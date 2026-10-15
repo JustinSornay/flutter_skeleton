@@ -49,7 +49,9 @@ mixin _ViewMixin {
   }
 
   /// The camera is only read on first build, so the key recreates the map
-  /// when the centre or zoom changes.
+  /// when the centre or zoom changes. The old map then disposes the
+  /// TileProvider of the TileLayer it last received, hence the "one
+  /// TileLayer per build" rule in the class dartdoc.
   Widget _map(ColorScheme cs, MapThumbnail widget) {
     return FlutterMap(
       key: ValueKey<(double, double, double)>((widget.lat, widget.lon, widget.zoom)),

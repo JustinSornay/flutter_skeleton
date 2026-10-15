@@ -51,12 +51,14 @@ part "widgets/sheet_header.dart";
 /// Selection starts with the values of [initialSelection] that match an
 /// option (compared with `==`), at most [max] of them in iteration order;
 /// the other values are dropped, so they are neither counted nor emitted.
-/// The selection keeps insertion order. Tapping a row or its checkbox
-/// toggles it. Once
-/// [max] values are selected, the remaining unchecked rows are disabled
-/// until one is unchecked. The confirm button is disabled while nothing is
-/// selected and otherwise calls [onConfirm] with a copy of the selection.
-/// [initialSelection] is read once, at mount.
+/// [initialSelection] is read once, at mount. When a rebuild changes
+/// [options] or [max], the pending selection is cleaned the same way: values
+/// that match no current option are dropped, then only the first [max] are
+/// kept. The selection keeps insertion order. Tapping a row or its checkbox
+/// toggles it. Once [max] values are selected, the remaining unchecked rows
+/// are disabled until one is unchecked. The confirm button is disabled while
+/// nothing is selected and otherwise calls [onConfirm] with a copy of the
+/// selection.
 ///
 /// The widget never closes itself: the host dismisses its container in
 /// [onConfirm] (`Navigator.of(sheetContext).pop()` for a bottom sheet,
@@ -83,12 +85,13 @@ final class MultiSelectSheet<K> extends StatefulWidget {
   final List<ChoiceOption<K>> options;
 
   /// Called with the selected values, in selection order, when the confirm
-  /// button is pressed. Never called with an empty set; only values of
-  /// [options] are emitted, at most [max] of them.
+  /// button is pressed. Never called with an empty set; only values of the
+  /// current [options] are emitted, at most the current [max] of them.
   final ValueChanged<Set<K>> onConfirm;
 
   /// Values checked at mount (read once). Values that match no option are
-  /// dropped, and only the first [max] remaining ones are kept.
+  /// dropped, and only the first [max] remaining ones are kept. Later changes
+  /// to this set are ignored.
   final Set<K> initialSelection;
 
   /// Maximum number of selected values, or null for no cap.

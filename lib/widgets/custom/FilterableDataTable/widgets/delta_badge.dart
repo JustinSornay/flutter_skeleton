@@ -1,6 +1,6 @@
 // delta_badge.dart
 //
-// Private cell of DataTableColumnSpec.delta: a dense PillBadge "▲ value" in
+// Private cell of DataTableColumnSpec.delta: a dense StatusPill "▲ value" in
 // the success tone or "▼ value" in the danger tone, or a muted "—" for zero,
 // NaN or a change below the neutral threshold. Each case has a spoken label
 // instead of the glyphs.
@@ -27,17 +27,14 @@ final class _DeltaBadge extends StatelessWidget {
     if (value.isNaN || value == 0 || value.abs() < neutralThreshold) return _neutral(context);
 
     final bool up = value > 0;
-    final StatusTone tone = up ? StatusTone.success : StatusTone.danger;
-    final ToneColors colors = StatusTones.colorsOf(context, tone);
     final String amount = _format(context, value.abs());
     final String arrow = up ? "▲" : "▼";
     final String key = up ? "custom.filterable_data_table.delta_up" : "custom.filterable_data_table.delta_down";
 
-    return PillBadge(
+    // StatusPill paints the tone's onContainer text on its container fill.
+    return StatusPill(
       label: "$arrow $amount",
-      tone: tone,
-      color: colors.onContainer,
-      backgroundColor: colors.container,
+      tone: up ? StatusTone.success : StatusTone.danger,
       dense: true,
       semanticsLabel: key.tr(namedArgs: <String, String>{"value": amount}),
     );
