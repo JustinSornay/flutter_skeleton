@@ -44,7 +44,348 @@
     "fr": "Français",
     "en": "English"
   },
-  "custom": {},
+  "custom": {
+    "async_picker_sheet": {
+      "close": "Fermer",
+      "submit_failed": "Impossible d'effectuer cette action. Réessayez."
+    },
+    "auth_locked_state": {
+      "sign_in": "Se connecter"
+    },
+    "autocomplete_search": {
+      "hint": "Rechercher…",
+      "no_results": "Aucun résultat",
+      "results": "Résultats : {count}"
+    },
+    "card_table": {
+      "empty": "Aucune donnée à afficher."
+    },
+    "clustered_value_axis": {
+      "cluster": "{count} éléments",
+      "count": "Éléments : {count}",
+      "best": "Top {value}",
+      "reference": "Référence",
+      "reference_group": "Réf. + {count}",
+      "open_group": "Afficher les {count} éléments"
+    },
+    "collapsed_gate_group": {
+      "summary": "Fonctionnalités verrouillées ({count})",
+      "unlock_all": "Tout débloquer",
+      "expand": "Afficher les fonctionnalités",
+      "collapse": "Masquer les fonctionnalités"
+    },
+    "collapsible_section_card": {
+      "expand": "Déplier la section",
+      "collapse": "Replier la section"
+    },
+    "comparison_bar": {
+      "readout": "{baseline} → {comparison}",
+      "readout_unchanged": "{value} =",
+      "semantics_better": "{label} : de {from} à {to}, en amélioration",
+      "semantics_worse": "{label} : de {from} à {to}, en dégradation",
+      "semantics_unchanged": "{label} : {value}, inchangé"
+    },
+    "comparison_panel": {
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "show_details": "Afficher le détail",
+      "hide_details": "Masquer le détail",
+      "callout": "{label} : {from} → {to}",
+      "summary_semantics": "{current} comparé à {candidate}"
+    },
+    "comparison_picker": {
+      "slot_a": "A",
+      "slot_b": "B",
+      "secondary": "Autres suggestions",
+      "add": "Ajouter",
+      "select_a": "Sélectionner {label} en A",
+      "select_b": "Sélectionner {label} en B",
+      "locked_a": "{label} fixé en A",
+      "loading": "Chargement"
+    },
+    "confidence_badge": {
+      "title": "Fiabilité des données",
+      "high": "Élevée",
+      "moderate": "Modérée",
+      "low": "Faible",
+      "label": "{title} : {level}",
+      "tooltip": "{title} : {level} ({percent})"
+    },
+    "context_action_bar": {
+      "semantics_label": "Actions disponibles"
+    },
+    "context_header": {
+      "change": "Modifier",
+      "loading": "Chargement"
+    },
+    "edit_fields_sheet": {
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "save_failed": "La modification n'a pas pu être enregistrée."
+    },
+    "editable_value_row": {
+      "edit": "Modifier",
+      "edit_semantics": "{action} : {value}"
+    },
+    "email_verification_prompt": {
+      "title": "Vérifiez votre email",
+      "body": "Un lien de vérification a été envoyé à {email}. Cliquez sur le lien puis revenez ici.",
+      "confirm": "J'ai vérifié mon email",
+      "resend_label": "Vous n'avez rien reçu ?",
+      "resend_action": "Renvoyer",
+      "resend_countdown": "Renvoyer dans {seconds} s",
+      "not_verified": "Email pas encore vérifié. Pensez à regarder dans vos spams.",
+      "check_failed": "La vérification a échoué. Réessayez.",
+      "close": "Fermer"
+    },
+    "expandable_group_tile": {
+      "expand": "Déplier le groupe",
+      "collapse": "Replier le groupe"
+    },
+    "explainer_sheet": {
+      "title": "Pourquoi ce résultat ?",
+      "empty": "Aucun facteur significatif",
+      "learn_more": "En savoir plus"
+    },
+    "feature_gate": {
+      "title": "Fonctionnalité verrouillée",
+      "locked": "Verrouillé",
+      "unlock": "Débloquer",
+      "semantics": "{label} : fonctionnalité verrouillée"
+    },
+    "file_upload_panel": {
+      "pick": "Sélectionner des fichiers",
+      "clear": "Effacer",
+      "submit": "Importer",
+      "uploading": "Import en cours…",
+      "success": "Fichiers importés avec succès.",
+      "failed": "L'import a échoué.",
+      "read_error": "Impossible de lire les fichiers sélectionnés. Réessayez.",
+      "size_bytes": "{value} o",
+      "size_kb": "{value} Ko",
+      "size_mb": "{value} Mo"
+    },
+    "filterable_data_table": {
+      "all": "Tous",
+      "empty": "Aucune donnée disponible.",
+      "delta_up": "Hausse de {value}",
+      "delta_down": "Baisse de {value}",
+      "delta_none": "Pas de variation"
+    },
+    "history_timeline": {
+      "current": "Actuel",
+      "resume_here": "Reprendre ici",
+      "older": "plus tôt",
+      "show_older": "Afficher les entrées plus anciennes ({count})"
+    },
+    "level_progress_bar": {
+      "counter": "{count}/{total} {label}",
+      "next_title": "Au niveau suivant :",
+      "next_action": "Passer au niveau supérieur",
+      "semantics": "Niveau {current} sur {count} : {label}"
+    },
+    "list_entry_card": {
+      "open_hint": "Ouvrir le détail"
+    },
+    "map_export_overlay": {
+      "north": "Nord",
+      "north_short": "N",
+      "legend_label": "Légende"
+    },
+    "map_pin": {
+      "label": "Repère de position"
+    },
+    "map_polygon_editor": {
+      "label": "Éditeur de polygone, sommets : {count}",
+      "hint": "Touchez la carte pour ajouter un sommet, touchez un côté pour en insérer un, faites glisser un sommet pour le déplacer.",
+      "vertex": "Sommet {index}"
+    },
+    "map_thumbnail": {
+      "semantics": "Aperçu de carte : latitude {lat}, longitude {lon}"
+    },
+    "master_list_panel": {
+      "create": "Nouveau",
+      "tab_label": "{label} ({count})",
+      "loading": "Chargement de la liste",
+      "error_title": "Impossible de charger la liste",
+      "error_hint": "Vérifiez votre connexion.",
+      "retry": "Réessayer",
+      "empty_title": "Rien pour le moment",
+      "archived_pill": "Archivés ({count})",
+      "archived_title": "Éléments archivés",
+      "archived_empty": "Aucun élément archivé",
+      "more_tags": "{count} de plus"
+    },
+    "metric_tile": {
+      "no_value": "Aucune valeur"
+    },
+    "multi_select_sheet": {
+      "confirm": "Valider",
+      "counter": "{count} sélectionné(s)",
+      "counter_max": "{count}/{max} sélectionné(s)",
+      "empty": "Aucun élément disponible."
+    },
+    "pill_link": {
+      "learn_more": "En savoir plus"
+    },
+    "polygon_editor_panel": {
+      "hint": "Touchez la carte pour ajouter des points",
+      "reset": "Réinitialiser",
+      "undo": "Annuler",
+      "save": "Enregistrer"
+    },
+    "polygon_form_sheet": {
+      "close": "Fermer",
+      "selection_label": "Sélection",
+      "change_selection": "Modifier la sélection",
+      "selection_error": "Impossible de charger cet élément. Réessayez.",
+      "draw_label": "Délimitation",
+      "draw_hint": "Appuyez sur la carte pour ajouter des points",
+      "undo": "Défaire",
+      "reset": "Réinitialiser",
+      "point_count": "Points : {count}",
+      "crossing_edges": "Des côtés se croisent : déplacez ou retirez un point.",
+      "name_label": "Nom (optionnel)",
+      "submit": "Valider",
+      "submit_error": "Impossible d'enregistrer. Réessayez."
+    },
+    "preview_confirm_sheet": {
+      "confirm": "Confirmer",
+      "cancel": "Annuler"
+    },
+    "progress_status_view": {
+      "cancel": "Annuler"
+    },
+    "qualitative_score_bar": {
+      "no_data": "Données insuffisantes",
+      "semantics_label": "{prefix} : {level}"
+    },
+    "quota_bar": {
+      "limit_reached": "Limite atteinte",
+      "unlimited": "Illimité",
+      "usage_value": "{used} sur {limit}"
+    },
+    "radar_chart_card": {
+      "help": "En savoir plus",
+      "axis_weight": "{label} ({percent})",
+      "axis_value": "{label} : {percent}",
+      "comparison": "Comparaison"
+    },
+    "range_envelope_bar": {
+      "insufficient_data": "Données insuffisantes",
+      "semantics_range": "{label} : de {min} à {max}"
+    },
+    "ranked_badge_list": {
+      "show_all": "Tout afficher ({count})",
+      "show_less": "Afficher moins"
+    },
+    "ranked_list": {
+      "count": "({count})",
+      "empty": "Aucun élément à afficher.",
+      "item_semantics": "Rang {rank} : {label}"
+    },
+    "score_banner": {
+      "value": "{value} / 100",
+      "value_semantics": "Score : {value} sur 100",
+      "link": "Pourquoi ce résultat ?"
+    },
+    "score_list_card": {
+      "empty": "Aucun élément à afficher.",
+      "load_error": "Impossible de charger la liste.",
+      "retry": "Réessayer",
+      "loading": "Chargement",
+      "score_semantics": "score {value}"
+    },
+    "search_field": {
+      "hint": "Rechercher…",
+      "clear": "Effacer la recherche"
+    },
+    "segmented_picker": {
+      "unavailable": "Indisponible"
+    },
+    "selection_chip_bar": {
+      "remove": "Retirer {label}"
+    },
+    "selection_strip": {
+      "prefix": "Affichage :",
+      "edit": "Modifier",
+      "edit_semantics": "{action} : {value}"
+    },
+    "severity_badge": {
+      "low": "Sévérité faible",
+      "medium": "Sévérité modérée",
+      "high": "Sévérité élevée"
+    },
+    "single_select_sheet": {
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "confirm": "Enregistrer"
+    },
+    "snap_bottom_sheet": {
+      "handle": "Poignée du panneau",
+      "expand": "Agrandir le panneau",
+      "collapse": "Réduire le panneau"
+    },
+    "status_heatmap_row": {
+      "no_value": "valeur manquante"
+    },
+    "status_pill_group": {
+      "unavailable": "Données indisponibles"
+    },
+    "status_strip": {
+      "reference": "Référence",
+      "comparison": "Comparaison",
+      "reference_labelled": "{label} (réf.)",
+      "comparison_labelled": "{label} (test)",
+      "partial_agreement": "Accord partiel",
+      "full_disagreement": "Désaccord total",
+      "unknown": "Inconnu",
+      "cell": "{period} : {status}",
+      "cell_comparison": "{period} : {primary} / {comparison}",
+      "cell_marker": "{cell}, {marker}"
+    },
+    "step_range_chart": {
+      "axis": "échelle de {min} à {max}",
+      "band": "{label} : de {from} à {to}",
+      "value": "{label} : {value}",
+      "range": "plage de {low} à {high}",
+      "locked": "{label} : verrouillé",
+      "unavailable": "{label} : non disponible",
+      "selected": "sélectionné"
+    },
+    "thumbnail_metric_card": {
+      "delta": "Écart {value}"
+    },
+    "trend_chart": {
+      "empty": "Aucune donnée pour le moment.",
+      "insufficient_data": "Données insuffisantes pour afficher une tendance fiable.",
+      "semantics": "Graphique d'évolution",
+      "threshold": "Seuil",
+      "threshold_crossed": "Seuil franchi"
+    },
+    "value_matrix": {
+      "load_error": "Impossible de charger le tableau.",
+      "retry": "Réessayer",
+      "empty": "Aucune donnée disponible.",
+      "export_csv": "Exporter en CSV",
+      "sort_hint": "Trier selon cette colonne",
+      "sorted_ascending": "Tri croissant",
+      "sorted_descending": "Tri décroissant",
+      "no_value": "Aucune valeur"
+    },
+    "version_badge": {
+      "current": "Version actuelle",
+      "outdated": "Version obsolète",
+      "learn_more": "En savoir plus"
+    },
+    "weighted_score_card": {
+      "score_semantics": "Score agrégé : {value} sur 100",
+      "alert": "Score critique (< {threshold})",
+      "alert_semantics": "Alerte : score critique",
+      "load_error": "Erreur de chargement",
+      "weight_semantics": "{label} : {value}"
+    }
+  },
   "about": {
     "title": "Flutter Skeleton",
     "body": "Squelette d'application Flutter : widgets MVVM, couche API typée, providers et go_router. Les données de démonstration proviennent de JSONPlaceholder."
