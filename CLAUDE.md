@@ -113,7 +113,7 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 - **No project-specific names**: keep nomenclature generic (`api`, `dto`, `model`) — never use the app name in folder/variable names.
 - **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`, `lib/api/controllers/`, `lib/utils/`).
 - **Mirror existing patterns**: inspect similar files before writing new ones.
-- **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate`, which already does). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
+- **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate` / a `SplittedPageTemplate` panel, which already do; never `FollowUpPageTemplate`, whose body scrolls). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
 
 ### Directory Structure (`lib/`)
 
@@ -128,7 +128,7 @@ providers/      # ChangeNotifier providers (+ _base helpers)
 routing/
   pages/        # Page widgets: thin template + render widget wrappers
   router/       # GoRouter config
-  templates/    # Page layout templates (FullPageTemplate)
+  templates/    # Page layout templates (FullPageTemplate, SplittedPageTemplate, FollowUpPageTemplate)
 theme/          # AppTheme (light / dark from one seed colour), StatusTones
 utils/          # Env, LoadState, ActionState, requireAuth, Coords, geo, parsers, extensions, builders, logger filters (see its README)
 widgets/
@@ -278,7 +278,10 @@ Uses `go_router`. Routes are declared in `routing/router/router.dart` under a `S
 
 To expose a page in the header, add a `NavItem` to `data/nav_items.dart` and the matching `GoRoute`.
 
-Pages (`routing/pages/`) are thin: a template (`FullPageTemplate`) plus the render widget it hosts. No state, no service calls.
+Pages (`routing/pages/`) are thin: a template plus the render widget(s) it hosts. No state, no service calls. Every template draws a `PageTitleBar` (title, optional back button calling `onBack`, optional `trailing` action):
+- `FullPageTemplate(title:, child:)` — one panel, body unscrolled (bounded height, capped at `kContentMaxWidth`): lists, `Listing`, screens that scroll themselves.
+- `SplittedPageTemplate(title:, primary:, secondary:, primaryWidth: 400)` — two panels side by side from `kSplitBreakpoint` (840 dp, measured on the template), stacked half / half below; both panels unscrolled (detail + map, list + preview).
+- `FollowUpPageTemplate(title:, onBack:, child:, actions:)` — page reached after an action: back button always shown, padded scrolling body capped at `kContentMaxWidth`, next-step `actions` pinned at the bottom.
 
 **Navigation rules:**
 - Always use `context.go()` — never `context.push()`. This is a URL-driven app; `push()` stacks history entries and breaks back-button behavior.
