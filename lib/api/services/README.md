@@ -9,6 +9,8 @@ Rules:
   `Http.listen`. Routes have no leading `/`.
 - Wrap every body in `try { … } catch (e) { Logger().e("Service.method: $e"); rethrow; }`.
   Every catch block is an observability checkpoint — a bare rethrow is incomplete.
+  `future.withErrorLog("Service.method")` (`utils/extensions/future_extensions.dart`)
+  is the equivalent shorthand.
 - Pass an `ApiFilterBuilder` as `queryBuilder` for filtered / paginated lists.
 - Errors 400+ surface as `ApiException(status, detail)`.
 

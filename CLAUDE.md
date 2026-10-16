@@ -111,7 +111,7 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 
 - **Look before you create**: search `utils/`, `widgets/custom/`, `api/http/` before writing anything new. Use the existing `Listing` widget for paginated lazy-loaded lists.
 - **No project-specific names**: keep nomenclature generic (`api`, `dto`, `model`) — never use the app name in folder/variable names.
-- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`, `lib/api/controllers/`).
+- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`, `lib/api/controllers/`, `lib/utils/`).
 - **Mirror existing patterns**: inspect similar files before writing new ones.
 - **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate`, which already does). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
 
@@ -130,7 +130,7 @@ routing/
   router/       # GoRouter config
   templates/    # Page layout templates (FullPageTemplate)
 theme/          # AppTheme (light / dark from one seed colour), StatusTones
-utils/          # Env, LoadState, parsers, builders, logger filters
+utils/          # Env, LoadState, ActionState, requireAuth, Coords, geo, parsers, extensions, builders, logger filters (see its README)
 widgets/
   constants.dart  # spacing grid, content width, motion, resolveMotion()
   core/
@@ -239,7 +239,7 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - One class per entity (`TodoService`, …); generate them with the service generator
 - All methods are `static Future<T>`
 - Always use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request`, or `Http.listen`
-- Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` — every service catch block is an observability checkpoint; a bare rethrow is incomplete
+- Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` (or the equivalent `.withErrorLog("ServiceName.methodName")` from `utils/extensions/future_extensions.dart`) — every service catch block is an observability checkpoint; a bare rethrow is incomplete
 - Pass an `ApiFilterBuilder` as `queryBuilder` for filtered/paginated list calls
 
 **Controllers** (`api/controllers/`, see its README)
@@ -257,7 +257,7 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 
 Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). Routes must have no leading `/`.
 
-Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls.
+Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls. For an action that needs a signed-in user, call `requireAuth(context)` (`utils/auth_gate.dart`): it returns true when a token exists, otherwise runs the sign-in flow the app registers with `AuthGate.setSignInHandler` (open a sign-in modal through `ModalProvider`, complete with the outcome).
 
 ### Providers
 
