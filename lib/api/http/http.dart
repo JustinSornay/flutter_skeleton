@@ -148,6 +148,7 @@ final class Http {
           file.field,
           file.bytes,
           filename: file.filename,
+          contentType: _mediaType(file.contentType),
         )));
     }
     final Request request = Request(method.key, uri)..headers.addAll(_headers);
@@ -156,6 +157,13 @@ final class Http {
     }
     return request;
   }
+
+  /// Parses an [HttpFile.contentType]; null keeps the octet-stream default.
+  /// Throws [FormatException] for an invalid MIME type.
+  static MediaType? _mediaType(String? contentType) {
+    return contentType == null ? null : MediaType.parse(contentType);
+  }
+
 
   /// Sends one attempt of the request and returns the [StreamedResponse]
   /// (body not read yet). Logs transport failures when LOGGER_ERROR is enabled.

@@ -6,7 +6,8 @@
 // caller passes the locale tag and translates the key (keys under
 // common.byte_units in assets/translations/). Used by FileUploadPanel.
 
-import "package:intl/intl.dart" show Intl, NumberFormat;
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
+import "package:intl/intl.dart" show NumberFormat;
 
 /// A byte count ready for display: a unit translation key and the number in
 /// that unit, formatted for a locale.
@@ -49,7 +50,7 @@ final class ByteSize {
   /// throwing.
   factory ByteSize.of(int bytes, {String? locale}) {
     assert(bytes >= 0, "bytes must not be negative, got $bytes");
-    final NumberFormat format = NumberFormat(_pattern, _verified(locale));
+    final NumberFormat format = NumberFormat(_pattern, numberLocale(locale));
     double amount = bytes.toDouble();
     int unit = 0;
     while (amount >= _step && unit < _keys.length - 1) {
@@ -61,8 +62,4 @@ final class ByteSize {
 
   /// Named args for `key.tr(namedArgs: …)`: `{"value": value}`.
   Map<String, String> get namedArgs => <String, String>{"value": value};
-
-  static String? _verified(String? locale) {
-    return Intl.verifiedLocale(locale, NumberFormat.localeExists, onFailure: (String _) => null);
-  }
 }

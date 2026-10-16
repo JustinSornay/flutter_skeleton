@@ -16,6 +16,7 @@ before writing a helper.
 | `geo/compass_point.dart` | `CompassPoint` (8 points): `fromBearing(degrees)` (45° sectors centred on each point), `between(from, to)` (initial great-circle bearing). No labels: translate `point.name`. |
 | `parsers/coordinates_parser.dart` | `parseCoordinates("lat,lon")` → `LatLng?` (null when blank, malformed, non-finite or out of range), `formatCoordinates(lat, lon)` → `"46.50°N  2.30°E"` (not localised). |
 | `parsers/string_parser.dart` | `StringParser.fromSnake` / `fromCamel` / `fromPascal` → `toSnake()` / `toCamel()` / `toPascal()`: identifier case conversion (API field names ↔ Dart names). |
+| `formatters/intl_locale.dart` | `numberLocaleOf(context)` / `dateLocaleOf(context)` (and `numberLocale(tag)` / `dateLocale(tag)`): the locale to hand to `NumberFormat` / `DateFormat`, null for an unknown one so intl falls back instead of throwing. Date data must be initialized (`main.dart`). |
 | `formatters/byte_size.dart` | `ByteSize.of(bytes, locale:)` → `key` (`common.byte_units.b` / `kb` / `mb` / `gb`, 1024 steps) + locale-formatted `value`; translate with `size.key.tr(namedArgs: size.namedArgs)`. |
 | `builders/file_path_builder.dart` | `FilePathBuilder`: `dart:io` path builder (platform separator, `..` cascades), used by the `cli/` generators; not for web code. |
 | `extensions/enum_extensions.dart` | `MyEnum.values.by(test, orElse:)`: first value matching a predicate (for a name lookup use the SDK's `values.byName` / `asNameMap()`). |

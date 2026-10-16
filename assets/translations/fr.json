@@ -18,11 +18,19 @@
       "kb": "{value} Ko",
       "mb": "{value} Mo",
       "gb": "{value} Go"
-    }
+    },
+    "saved": "Modifications enregistrées.",
+    "created": "Élément créé.",
+    "deleted": "Élément supprimé.",
+    "delete": "Supprimer",
+    "delete_title": "Supprimer cet élément ?",
+    "delete_message": "Cette action est définitive.",
+    "not_found": "Cet élément n'existe plus."
   },
   "error": {
     "load_failed": "Impossible de charger les données.",
-    "save_failed": "La modification n'a pas pu être enregistrée."
+    "save_failed": "La modification n'a pas pu être enregistrée.",
+    "delete_failed": "La suppression a échoué."
   },
   "offline": {
     "banner": "Hors ligne"

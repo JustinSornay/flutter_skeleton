@@ -18,11 +18,19 @@
       "kb": "{value} KB",
       "mb": "{value} MB",
       "gb": "{value} GB"
-    }
+    },
+    "saved": "Changes saved.",
+    "created": "Item created.",
+    "deleted": "Item deleted.",
+    "delete": "Delete",
+    "delete_title": "Delete this item?",
+    "delete_message": "This cannot be undone.",
+    "not_found": "This item no longer exists."
   },
   "error": {
     "load_failed": "Unable to load data.",
-    "save_failed": "The change could not be saved."
+    "save_failed": "The change could not be saved.",
+    "delete_failed": "The item could not be deleted."
   },
   "offline": {
     "banner": "Offline"

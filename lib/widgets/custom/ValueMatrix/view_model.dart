@@ -106,8 +106,7 @@ final class _ValueMatrixState extends State<ValueMatrix> with _ViewMixin {
   String Function(double value) formatter(BuildContext context) {
     final String Function(double value)? custom = widget.formatValue;
     if (custom != null) return custom;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     return NumberFormat("0.00", locale).format;
   }
 

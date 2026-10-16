@@ -66,8 +66,7 @@ mixin _ViewMixin {
   }
 
   String _defaultLabel(BuildContext context, MapThumbnail widget) {
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     final NumberFormat format = NumberFormat(_kCoordinatePattern, locale);
     return "custom.map_thumbnail.semantics".tr(
       namedArgs: <String, String>{

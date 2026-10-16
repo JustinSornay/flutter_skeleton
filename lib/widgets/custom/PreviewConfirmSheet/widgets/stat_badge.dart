@@ -54,8 +54,7 @@ final class _StatBadge extends StatelessWidget {
   String _value(BuildContext context) {
     final double? delta = stat._delta;
     if (delta == null) return stat.value;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     final NumberFormat format = NumberFormat.decimalPatternDigits(
       locale: locale,
       decimalDigits: stat._fractionDigits,

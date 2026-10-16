@@ -8,6 +8,7 @@
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
 import "package:flutter_skeleton/widgets/custom/MapPin/index.dart";
 import "package:latlong2/latlong.dart";
 

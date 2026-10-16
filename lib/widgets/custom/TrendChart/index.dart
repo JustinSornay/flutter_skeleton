@@ -16,6 +16,7 @@ import "package:easy_localization/easy_localization.dart" hide TextDirection;
 import "package:fl_chart/fl_chart.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 
 part "controllers/trend_geometry.dart";

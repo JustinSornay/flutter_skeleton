@@ -237,7 +237,7 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - GeoJSON polygons go through `utils/geo/geojson.dart` (`polygonToGeoJson` in inputs' `toJson()`, `geoJsonOuterRings` in outputs) — never hand-roll the `[lon, lat]` flip or the ring closing
 
 **Services**
-- One class per entity (`TodoService`, …); generate them with the service generator
+- One class per entity (`TodoService`, …); generate them with the service generator (it also writes the entity's controller)
 - All methods are `static Future<T>`
 - Always use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request`, `Http.listen`, `Http.multipart` or `Http.rawBytes`
 - Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` (or the equivalent `.withErrorLog("ServiceName.methodName")` from `utils/extensions/future_extensions.dart`) — every service catch block is an observability checkpoint; a bare rethrow is incomplete
@@ -245,7 +245,7 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 
 **Controllers** (`api/controllers/`, see its README)
 - Sit between view models and services, like API controllers: they call services and own what the user experiences around the call — error toasts, redirection, the meaning of a status code for the flow (404 = gone, 409 = exists), auth and multi-step flows, confirmation modal (`confirmAction`), feedback overlay, success toast (`AppErrorLevel.success`)
-- One `final class <Entity>Controller` per entity or flow, `const` constructor whose params are the service calls defaulting to the static service methods (test seam)
+- One `final class <Entity>Controller` per entity or flow, `const` constructor whose params are the service calls defaulting to the static service methods (test seam); the service generator writes one per entity (load / create / update / delete with generic `common.*` messages and a `listLocation` redirect)
 - Methods are `Future<T>` taking `BuildContext` first and never throw: the return value (`LoadState<T>`, `T?`, `bool`) tells the view model what happened; local UI state stays in the view model
 - Read providers before the first `await`; after it, use the context only behind `context.mounted`
 
@@ -255,7 +255,7 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - `Http.input` — POST/PUT/PATCH → `HttpOutput`
 - `Http.request` — HEAD / DELETE / body-less PATCH (a state transition answering 204) → void; never sends a body
 - `Http.listen` — streaming via `StreamTransformer<List<int>, T>`; `api/http/transformers/` ships `SseTransformer` (text/event-stream) and `NdjsonTransformer` (one JSON object per line), both emitting `Map<String, dynamic>` with UTF-8 decoded across chunks — map them to DTOs in the listener with `HttpOutput.fromJson(json)`. Malformed JSON or invalid UTF-8 surfaces as a `FormatException`
-- `Http.multipart` — POST multipart/form-data: `files: List<HttpFile>` (`api/http/http_file.dart`: field, bytes, filename; parts sent as `application/octet-stream`) + `fields: Map<String, String>` → `HttpOutput`; fresh parts are built for the 401 retry
+- `Http.multipart` — POST multipart/form-data: `files: List<HttpFile>` (`api/http/http_file.dart`: field, bytes, filename, optional `contentType` MIME, else `application/octet-stream`) + `fields: Map<String, String>` → `HttpOutput`; fresh parts are built for the 401 retry
 - `Http.rawBytes` — GET → `Uint8List` (binary downloads)
 
 Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). All of them share one send path: Bearer header, one token refresh + retry on a 401, `onUnauthorized` when the retry with the refreshed token gets a 401 again; `Http.listen` included, before streaming (the listener is not called). Routes must have no leading `/`.
@@ -300,6 +300,7 @@ Handled by `EasyLocalization`. Supported locales and asset path live in `data/lo
 - **Canonical reference:** `fr.json` — every other locale must match its key set exactly (enforced by `test/unit/translations_test.dart`).
 - **Import rule:** `easy_localization` must be imported in the parent `index.dart`, not in `view.dart` (part files have no imports).
 - Shared unit labels live under `common.*` (e.g. `common.byte_units.*` for `ByteSize`).
+- Numbers and dates: intl `NumberFormat` / `DateFormat` with `numberLocaleOf(context)` / `dateLocaleOf(context)` (`utils/formatters/intl_locale.dart`). `main.dart` loads the date data with `initializeDateFormatting()`; without it intl only knows `en_US` and any other locale throws.
 - **Parametric keys** use `namedArgs`: `"todo.user".tr(namedArgs: <String, String>{"id": "$id"})` → `"Utilisateur n°{id}"`.
 - Never hardcode user-visible strings in widgets.
 

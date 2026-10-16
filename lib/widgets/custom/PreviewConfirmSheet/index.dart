@@ -10,6 +10,7 @@
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/PillBadge/index.dart";
 import "package:flutter_skeleton/widgets/custom/StatusPill/index.dart";

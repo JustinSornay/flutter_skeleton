@@ -175,8 +175,7 @@ mixin _ViewMixin {
   /// [fraction] (already in `[0, 1]`) as a percentage for the ambient locale;
   /// an unknown locale falls back to intl's default.
   String _percent(BuildContext context, double fraction) {
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     return NumberFormat.percentPattern(locale).format(fraction);
   }
 }

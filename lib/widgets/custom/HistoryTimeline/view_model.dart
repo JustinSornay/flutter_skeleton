@@ -49,8 +49,7 @@ final class _HistoryTimelineState<T> extends State<HistoryTimeline<T>> with _Vie
   String Function(DateTime date) _captionFormatter(BuildContext context) {
     final String Function(DateTime date)? custom = widget.dateLabelOf;
     if (custom != null) return custom;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, DateFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = dateLocaleOf(context);
     return DateFormat.MMMd(locale).format;
   }
 

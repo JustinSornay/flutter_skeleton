@@ -40,8 +40,7 @@ final class _TrendChartState extends State<TrendChart> with _ViewMixin {
   String Function(DateTime date) _xFormatter(BuildContext context) {
     final String Function(DateTime date)? custom = widget.xLabelBuilder;
     if (custom != null) return custom;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, DateFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = dateLocaleOf(context);
     return DateFormat.Md(locale).format;
   }
 
@@ -50,8 +49,7 @@ final class _TrendChartState extends State<TrendChart> with _ViewMixin {
   String Function(double value) _yFormatter(BuildContext context) {
     final String Function(double value)? custom = widget.yLabelBuilder;
     if (custom != null) return custom;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     return NumberFormat.decimalPattern(locale).format;
   }
 

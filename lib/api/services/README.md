@@ -7,7 +7,7 @@ Rules:
 
 - Use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request` (HEAD /
   DELETE / body-less PATCH), `Http.listen`, `Http.multipart` (uploads,
-  `HttpFile` parts) or `Http.rawBytes` (binary downloads). Routes have no
+  `HttpFile` parts, optional MIME `contentType`) or `Http.rawBytes` (binary downloads). Routes have no
   leading `/`.
 - Streaming endpoints: `Http.listen<Map<String, dynamic>>` with
   `const SseTransformer()` or `const NdjsonTransformer()`

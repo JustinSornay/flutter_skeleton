@@ -10,20 +10,27 @@
 // Relationships:
 //   - Consumed by Http.multipart (api/http/http.dart)
 
+import "package:flutter_skeleton/api/http/http.dart" show Http;
+
 /// A file sent as one part of a multipart/form-data request.
 ///
 /// [field] is the form field name the server reads the file from, [filename]
 /// the name announced in the part's `Content-Disposition` (servers commonly
 /// treat a part without filename as a plain text field, hence required).
-/// The part is sent as `application/octet-stream`.
+///
+/// [contentType] is the part's MIME type (`"image/png"`, `"text/csv;
+/// charset=utf-8"`); null sends `application/octet-stream`. An invalid value
+/// makes [Http.multipart] throw a [FormatException] before anything is sent.
 final class HttpFile {
   final String field;
   final List<int> bytes;
   final String filename;
+  final String? contentType;
 
   const HttpFile({
     required this.field,
     required this.bytes,
     required this.filename,
+    this.contentType,
   });
 }

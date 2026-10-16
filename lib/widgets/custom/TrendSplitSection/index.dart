@@ -10,6 +10,7 @@ import "dart:math" as math;
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/StatusPill/index.dart";
 
@@ -108,7 +109,7 @@ final class TrendSplitSection extends StatelessWidget with _ViewMixin {
   /// value: a delta that rounds to zero (`0.00001`, `-0.00001`, `-0.0`) is
   /// the unsigned `"0.0%"`, and the `+` is added only above it.
   static String defaultFormat(double delta, {String? locale}) {
-    final String? verified = Intl.verifiedLocale(locale, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? verified = numberLocale(locale);
     final NumberFormat percent = NumberFormat.decimalPercentPattern(locale: verified, decimalDigits: 1);
     final String zero = percent.format(0);
     if (percent.format(delta.abs()) == zero) return zero;

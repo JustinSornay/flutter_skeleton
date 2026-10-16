@@ -93,8 +93,7 @@ mixin _ViewMixin {
   String _percent(BuildContext context, double value) {
     final int nearest = (value * 100).round();
     final double floored = (nearest / 100 > value ? nearest - 1 : nearest) / 100;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     return NumberFormat.percentPattern(locale).format(floored);
   }
 }

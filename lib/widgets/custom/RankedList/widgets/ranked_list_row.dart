@@ -209,8 +209,7 @@ final class _RankedListRow<T> extends StatelessWidget {
   String? _scoreText(BuildContext context) {
     final double? score = entry.score;
     if (score == null || !score.isFinite) return null;
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     return NumberFormat.percentPattern(locale).format(score);
   }
 

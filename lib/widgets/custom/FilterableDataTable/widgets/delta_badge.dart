@@ -60,8 +60,7 @@ final class _DeltaBadge extends StatelessWidget {
     final String Function(double absValue)? custom = format;
     if (custom != null) return custom(absValue);
 
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     return NumberFormat.decimalPercentPattern(locale: locale, decimalDigits: 1).format(absValue);
   }
 }

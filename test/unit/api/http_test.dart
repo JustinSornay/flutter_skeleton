@@ -418,6 +418,40 @@ void _multipartTests() {
     expect(output.cast<String>("id"), "u1");
   });
 
+  test("sends each part as octet-stream unless it names a content type", () async {
+    final List<http.Request> requests = await _withMock(
+      (_) async => _json(<String, dynamic>{"id": "u3"}, 201),
+      () => Http.multipart(
+        api: HttpApiEnum.api,
+        route: "uploads",
+        files: <HttpFile>[
+          HttpFile(field: "raw", bytes: utf8.encode("a"), filename: "a.bin"),
+          HttpFile(field: "csv", bytes: utf8.encode("b"), filename: "b.csv", contentType: "text/csv; charset=utf-8"),
+        ],
+      ),
+    );
+
+    final String body = utf8.decode(requests.single.bodyBytes);
+    expect(body, contains("content-type: application/octet-stream\r\ncontent-disposition: form-data; name=\"raw\""));
+    expect(body, contains("content-type: text/csv; charset=utf-8\r\ncontent-disposition: form-data; name=\"csv\""));
+  });
+
+  test("an invalid content type throws FormatException before sending", () async {
+    final List<http.Request> requests = await _withMock(
+      (_) async => _json(<String, dynamic>{"id": "u4"}, 201),
+      () => expectLater(
+        Http.multipart(
+          api: HttpApiEnum.api,
+          route: "uploads",
+          files: <HttpFile>[const HttpFile(field: "f", bytes: <int>[1], filename: "f", contentType: "not a mime")],
+        ),
+        throwsFormatException,
+      ),
+    );
+
+    expect(requests, isEmpty);
+  });
+
   test("re-sends fresh parts after a 401 and a token refresh", () async {
     _expiringToken();
     late HttpOutput output;

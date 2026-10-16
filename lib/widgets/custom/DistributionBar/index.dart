@@ -8,9 +8,10 @@
 
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/SectionCard/index.dart";
-import "package:intl/intl.dart" show Intl, NumberFormat;
+import "package:intl/intl.dart" show NumberFormat;
 
 part "segment.dart";
 part "view.dart";

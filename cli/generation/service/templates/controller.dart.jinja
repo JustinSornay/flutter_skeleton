@@ -1,0 +1,117 @@
+// {{ file_name }}_controller.dart
+//
+// User-facing flows around {{ ClassName }}Service: success and error toasts,
+// confirmation before a delete, redirection when the item is gone. Lists stay
+// on the service (Listing renders its own loading / error / empty states).
+// See lib/api/controllers/README.md.
+
+import "package:easy_localization/easy_localization.dart";
+import "package:flutter/widgets.dart";
+import "package:flutter_skeleton/api/controllers/_base/confirm_action.dart";
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/input/post_input.dart";
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/input/put_input.dart";
+import "package:flutter_skeleton/api/dtos/{{ file_name }}/output/detail_output.dart";
+import "package:flutter_skeleton/api/http/api_exception.dart";
+import "package:flutter_skeleton/api/services/{{ file_name }}_service.dart";
+import "package:flutter_skeleton/providers/error_provider.dart";
+import "package:flutter_skeleton/utils/load_state.dart";
+import "package:go_router/go_router.dart";
+import "package:provider/provider.dart";
+
+/// Every method takes the caller's [BuildContext] first and never throws:
+/// the return value tells the view model what happened, the feedback is
+/// already shown. Service calls are constructor parameters so tests pass
+/// fakes.
+final class {{ ClassName }}Controller {
+  final Future<{{ ClassName }}DetailOutput> Function(int id) get{{ ClassName }};
+  final Future<{{ ClassName }}DetailOutput> Function({{ ClassName }}PostInput input) post{{ ClassName }};
+  final Future<{{ ClassName }}DetailOutput> Function(int id, {{ ClassName }}PutInput input) put{{ ClassName }};
+  final Future<void> Function(int id) delete{{ ClassName }};
+
+  /// Where the user is sent when the item is gone (deleted, or 404 on load).
+  final String listLocation;
+
+  const {{ ClassName }}Controller({
+    this.get{{ ClassName }} = {{ ClassName }}Service.get,
+    this.post{{ ClassName }} = {{ ClassName }}Service.post,
+    this.put{{ ClassName }} = {{ ClassName }}Service.put,
+    this.delete{{ ClassName }} = {{ ClassName }}Service.delete,
+    this.listLocation = "/",
+  });
+
+  /// Loads one item. A 404 shows a warning and goes to [listLocation]; any
+  /// other failure is a [LoadError] the view renders with a retry.
+  Future<LoadState<{{ ClassName }}DetailOutput>> load(BuildContext context, int id) async {
+    final ErrorProvider toasts = context.read<ErrorProvider>();
+    try {
+      return Loaded<{{ ClassName }}DetailOutput>(await get{{ ClassName }}(id));
+    } on ApiException catch (e) {
+      if (e.status == 404 && context.mounted) {
+        toasts.show("common.not_found".tr(), level: AppErrorLevel.warning);
+        context.go(listLocation);
+      }
+      return LoadError<{{ ClassName }}DetailOutput>(e.detail);
+    } catch (_) {
+      return const LoadError<{{ ClassName }}DetailOutput>();
+    }
+  }
+
+  /// Creates an item. Returns it after a success toast, or null after an
+  /// error toast.
+  Future<{{ ClassName }}DetailOutput?> create(BuildContext context, {{ ClassName }}PostInput input) async {
+    final ErrorProvider toasts = context.read<ErrorProvider>();
+    try {
+      final {{ ClassName }}DetailOutput created = await post{{ ClassName }}(input);
+      toasts.show("common.created".tr(), level: AppErrorLevel.success);
+      return created;
+    } catch (_) {
+      toasts.show("error.save_failed".tr());
+      return null;
+    }
+  }
+
+  /// Updates an item. Returns it after a success toast, or null after an
+  /// error toast (the caller keeps its values).
+  Future<{{ ClassName }}DetailOutput?> update(BuildContext context, int id, {{ ClassName }}PutInput input) async {
+    final ErrorProvider toasts = context.read<ErrorProvider>();
+    try {
+      final {{ ClassName }}DetailOutput updated = await put{{ ClassName }}(id, input);
+      toasts.show("common.saved".tr(), level: AppErrorLevel.success);
+      return updated;
+    } catch (_) {
+      toasts.show("error.save_failed".tr());
+      return null;
+    }
+  }
+
+  /// Asks for confirmation, deletes, shows a success toast and goes to
+  /// [listLocation]. A 404 means already gone: same outcome. Returns false
+  /// when the user cancels or the call fails (error toast).
+  Future<bool> delete(BuildContext context, int id) async {
+    final ErrorProvider toasts = context.read<ErrorProvider>();
+    final bool confirmed = await confirmAction(
+      context,
+      title: "common.delete_title".tr(),
+      message: "common.delete_message".tr(),
+      confirmLabel: "common.delete".tr(),
+      cancelLabel: "common.cancel".tr(),
+      destructive: true,
+    );
+    if (!confirmed) return false;
+    try {
+      await delete{{ ClassName }}(id);
+    } on ApiException catch (e) {
+      if (e.status != 404) return _deleteFailed(toasts);
+    } catch (_) {
+      return _deleteFailed(toasts);
+    }
+    toasts.show("common.deleted".tr(), level: AppErrorLevel.success);
+    if (context.mounted) context.go(listLocation);
+    return true;
+  }
+
+  bool _deleteFailed(ErrorProvider toasts) {
+    toasts.show("error.delete_failed".tr());
+    return false;
+  }
+}

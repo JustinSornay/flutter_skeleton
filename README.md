@@ -37,7 +37,7 @@ la démo fonctionne donc sans backend.
 | **Thème** (`lib/theme/`) | Material 3 clair + sombre depuis une couleur de marque, tokens `ColorScheme` uniquement, extension `StatusTones` (tons de statut contrastés ≥ 4.5:1 en clair et en sombre) |
 | **i18n** | Français (référence) + anglais, test de parité des clés |
 | **Outillage** | Générateurs de widgets et de services (`cli/`), lints stricts + `solid_lints`, gate qualité (`tooling/hooks/test-gate.sh`) branchée sur le hook `Stop` de Claude Code |
-| **Tests** | 3 209 tests unitaires et widgets (Http sans réseau via `MockClient`, Listing, layout, démo, routeur avec vraies traductions, un fichier de test par widget de `custom/`, contraste des tons de statut) |
+| **Tests** | 3 217 tests unitaires et widgets (Http sans réseau via `MockClient`, Listing, layout, démo, routeur avec vraies traductions, un fichier de test par widget de `custom/`, contraste des tons de statut) |
 
 ## Architecture
 
@@ -66,7 +66,7 @@ dart cli/generation/widget/index.dart --className MyWidget --path core/render
 # Widget stateless (index + view)
 dart cli/generation/widget/index.dart --className MyBadge --path custom --stateless
 
-# Service + 4 DTOs (detail/list output, post/put input)
+# Service + contrôleur + 4 DTOs (detail/list output, post/put input)
 dart cli/generation/service/index.dart --className MyEntity --route my-entities
 ```
 

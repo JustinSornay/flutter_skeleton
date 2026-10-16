@@ -62,8 +62,9 @@ widget can host them.
 - Built-in chrome strings use `"custom.<snake_case_widget_name>.<key>".tr()`;
   add the keys to `fr.json` (canonical) and `en.json` in the same change.
   `easy_localization` is imported in `index.dart` only.
-- Numbers and dates use intl `NumberFormat.percentPattern` / `DateFormat` with
-  `context.locale.toLanguageTag()`.
+- Numbers and dates use intl `NumberFormat` / `DateFormat` with
+  `numberLocaleOf(context)` / `dateLocaleOf(context)`
+  (`utils/formatters/intl_locale.dart`), never a hand-rolled locale lookup.
 
 **Sheets and overlays**
 - Content-only sheets and panels draw **no drag handle**. The host mounts them

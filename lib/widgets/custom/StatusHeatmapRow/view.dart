@@ -63,8 +63,7 @@ mixin _ViewMixin {
   /// Two decimals for the ambient locale; an unknown locale falls back to
   /// intl's default.
   StatusHeatmapValueFormatter _defaultFormatter(BuildContext context) {
-    final String? tag = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    final String? locale = Intl.verifiedLocale(tag, NumberFormat.localeExists, onFailure: (String _) => null);
+    final String? locale = numberLocaleOf(context);
     final NumberFormat format = NumberFormat.decimalPatternDigits(
       locale: locale,
       decimalDigits: _defaultDecimals,

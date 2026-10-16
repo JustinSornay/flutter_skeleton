@@ -18,6 +18,7 @@ import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/widgets/layout/layout.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
+import "package:intl/date_symbol_data_local.dart";
 import "package:nested/nested.dart";
 import "package:provider/provider.dart";
 import "package:shared_preferences/shared_preferences.dart";
@@ -99,6 +100,7 @@ Future<GoRouter> pumpLocalizedRouter(
   _setSurfaceSize(tester, surfaceSize);
   SharedPreferences.setMockInitialValues(<String, Object>{});
   await EasyLocalization.ensureInitialized();
+  await initializeDateFormatting();
 
   final GoRouter router = createRouter(initialLocation: initialLocation);
   addTearDown(router.dispose);

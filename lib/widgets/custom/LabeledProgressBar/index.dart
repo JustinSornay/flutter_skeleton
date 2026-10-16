@@ -8,6 +8,7 @@
 
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
+import "package:flutter_skeleton/utils/formatters/intl_locale.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:intl/intl.dart";
 

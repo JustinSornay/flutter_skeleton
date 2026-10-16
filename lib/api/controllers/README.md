@@ -61,6 +61,11 @@ that call**.
 - User-visible strings with `"key".tr()`; add the keys to `fr.json` and
   `en.json`.
 
+The service generator (`dart cli/generation/service/index.dart --className
+MyEntity`) writes `my_entity_controller.dart` next to the service: `load`,
+`create`, `update` and `delete` with generic `common.*` messages and a
+`listLocation` to go back to. Replace the messages and add flows as needed.
+
 ## `_base/`
 
 | File | Content |

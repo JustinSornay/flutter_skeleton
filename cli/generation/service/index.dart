@@ -1,8 +1,10 @@
 // index.dart
 //
-// Service generator. Creates a static service class and its four DTOs:
+// Service generator. Creates a static service class, its four DTOs and the
+// controller that wraps the calls with user feedback:
 //
 //   lib/api/services/<entity>_service.dart
+//   lib/api/controllers/<entity>_controller.dart
 //   lib/api/dtos/<entity>/output/detail_output.dart
 //   lib/api/dtos/<entity>/output/list_output.dart
 //   lib/api/dtos/<entity>/input/post_input.dart
@@ -30,6 +32,7 @@ const String routeOptionName = "route";
 /// entity's snake_case name.
 Map<String, List<String>> outputFiles(String fileName) => <String, List<String>>{
   "service.dart.jinja": <String>["api", "services", "${fileName}_service.dart"],
+  "controller.dart.jinja": <String>["api", "controllers", "${fileName}_controller.dart"],
   "detail_output.dart.jinja": <String>["api", "dtos", fileName, "output", "detail_output.dart"],
   "list_output.dart.jinja": <String>["api", "dtos", fileName, "output", "list_output.dart"],
   "post_input.dart.jinja": <String>["api", "dtos", fileName, "input", "post_input.dart"],
