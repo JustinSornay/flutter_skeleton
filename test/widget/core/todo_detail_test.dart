@@ -1,11 +1,14 @@
 // todo_detail_test.dart
 //
-// Widget tests for TodoDetail using the injectable `getTodo` / `patchTodo`
-// seams: loading → loaded, error → retry, toggle success and toggle failure.
+// Widget tests for TodoDetail with a TodoController built on fake service
+// calls: loading → loaded, error → retry, toggle success and toggle failure.
+// The controller's own flows (toasts, 404 redirect, delete confirmation) are
+// covered in test/widget/controllers/todo_controller_test.dart.
 
 import "dart:async";
 
 import "package:flutter/material.dart";
+import "package:flutter_skeleton/api/controllers/todo_controller.dart";
 import "package:flutter_skeleton/api/dtos/todo/input/patch_input.dart";
 import "package:flutter_skeleton/api/dtos/todo/output/detail_output.dart";
 import "package:flutter_skeleton/api/http/api_exception.dart";
@@ -32,7 +35,7 @@ void main() {
     final Completer<TodoDetailOutput> response = Completer<TodoDetailOutput>();
     await pumpApp(
       tester,
-      TodoDetail(todoId: 1, getTodo: (_) => response.future),
+      TodoDetail(todoId: 1, controller: TodoController(getTodo: (_) => response.future)),
       providers: defaultTestProviders(),
     );
     expect(find.byType(SkeletonPulse), findsOneWidget);
@@ -51,16 +54,18 @@ void main() {
       tester,
       TodoDetail(
         todoId: 1,
-        getTodo: (_) async {
-          calls++;
-          if (calls == 1) throw const ApiException(status: 404, detail: "Not Found");
-          return _todo();
-        },
+        controller: TodoController(
+          getTodo: (_) async {
+            calls++;
+            if (calls == 1) throw const ApiException(status: 500, detail: "Server Error");
+            return _todo();
+          },
+        ),
       ),
       providers: defaultTestProviders(),
     );
     await tester.pumpAndSettle();
-    expect(find.text("Not Found"), findsOneWidget);
+    expect(find.text("Server Error"), findsOneWidget);
 
     await tester.tap(find.text("common.retry"));
     await tester.pumpAndSettle();
@@ -73,11 +78,13 @@ void main() {
       tester,
       TodoDetail(
         todoId: 1,
-        getTodo: (_) async => _todo(),
-        patchTodo: (int id, TodoPatchInput input) async {
-          sent = input;
-          return _todo(completed: true);
-        },
+        controller: TodoController(
+          getTodo: (_) async => _todo(),
+          patchTodo: (int id, TodoPatchInput input) async {
+            sent = input;
+            return _todo(completed: true);
+          },
+        ),
       ),
       providers: defaultTestProviders(),
     );
@@ -89,6 +96,33 @@ void main() {
     expect(sent?.toJson(), <String, dynamic>{"completed": true});
     expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
     expect(find.text("todos.status_done"), findsOneWidget);
+    Provider.of<ErrorProvider>(tester.element(find.byType(TodoDetail)), listen: false).clear();
+  });
+
+  testWidgets("disables both actions while a PATCH is in flight", (WidgetTester tester) async {
+    final Completer<TodoDetailOutput> patch = Completer<TodoDetailOutput>();
+    await pumpApp(
+      tester,
+      TodoDetail(
+        todoId: 1,
+        controller: TodoController(
+          getTodo: (_) async => _todo(),
+          patchTodo: (int id, TodoPatchInput input) => patch.future,
+        ),
+      ),
+      providers: defaultTestProviders(),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull);
+    expect(tester.widget<ButtonStyleButton>(find.widgetWithText(OutlinedButton, "todo.delete")).onPressed, isNull);
+
+    patch.complete(_todo(completed: true));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ButtonStyleButton>(find.widgetWithText(OutlinedButton, "todo.delete")).onPressed, isNotNull);
+    Provider.of<ErrorProvider>(tester.element(find.byType(TodoDetail)), listen: false).clear();
   });
 
   testWidgets("a failed PATCH keeps the value and reports through ErrorProvider", (WidgetTester tester) async {
@@ -96,8 +130,10 @@ void main() {
       tester,
       TodoDetail(
         todoId: 1,
-        getTodo: (_) async => _todo(),
-        patchTodo: (int id, TodoPatchInput input) async => throw Exception("offline"),
+        controller: TodoController(
+          getTodo: (_) async => _todo(),
+          patchTodo: (int id, TodoPatchInput input) async => throw Exception("offline"),
+        ),
       ),
       providers: defaultTestProviders(),
     );

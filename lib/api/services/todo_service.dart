@@ -55,4 +55,17 @@ final class TodoService {
       rethrow;
     }
   }
+
+  static Future<void> delete(int id) async {
+    try {
+      await Http.request(
+        method: HttpMethodEnum.delete,
+        api: HttpApiEnum.api,
+        route: "todos/$id",
+      );
+    } catch (e) {
+      Logger().e("TodoService.delete: $e");
+      rethrow;
+    }
+  }
 }

@@ -29,6 +29,12 @@ dependencies:
   intl: ">=0.19.0 <1.0.0"
   # Network status stream for OfflineBanner.
   connectivity_plus: ^6.1.4
+  # Line / bar charts for the chart widgets in widgets/custom/.
+  fl_chart: ^1.2.0
+  # Interactive tile maps for the map widgets in widgets/custom/.
+  flutter_map: ^8.2.2
+  # LatLng / distance types used by flutter_map.
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:

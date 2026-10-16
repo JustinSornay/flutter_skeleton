@@ -33,6 +33,7 @@ Output (compiles as generated; add the real fields afterwards):
 
 ```
 lib/api/services/my_entity_service.dart        get · getList · post · put · delete
+lib/api/controllers/my_entity_controller.dart  load · create · update · delete (toasts, confirmation, redirect)
 lib/api/dtos/my_entity/output/detail_output.dart
 lib/api/dtos/my_entity/output/list_output.dart
 lib/api/dtos/my_entity/input/post_input.dart

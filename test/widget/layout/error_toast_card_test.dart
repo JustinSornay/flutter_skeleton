@@ -4,6 +4,7 @@
 
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/providers/error_provider.dart";
+import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/layout/ErrorToastCard/index.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:provider/provider.dart";
@@ -34,5 +35,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Save failed"), findsNothing);
     expect(provider.hasError, isFalse);
+  });
+
+  testWidgets("a success toast uses the success tone and a check icon", (WidgetTester tester) async {
+    await pumpApp(tester, const ErrorToastCard(), providers: defaultTestProviders());
+    final ErrorProvider provider = Provider.of<ErrorProvider>(
+      tester.element(find.byType(ErrorToastCard)),
+      listen: false,
+    );
+
+    provider.show("Saved", level: AppErrorLevel.success);
+    await tester.pumpAndSettle();
+
+    final ToneColors success = StatusTones.colorsOf(tester.element(find.text("Saved")), StatusTone.success);
+    expect(find.byIcon(Icons.check_circle_outline_rounded), findsOneWidget);
+    expect(tester.widget<Text>(find.text("Saved")).style?.color, success.onContainer);
+    provider.clear();
+    await tester.pumpAndSettle();
   });
 }

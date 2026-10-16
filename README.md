@@ -30,14 +30,14 @@ la démo fonctionne donc sans backend.
 
 | Domaine | Contenu |
 |---|---|
-| **API** (`lib/api/`) | `Http` (5 points d'entrée : `output`, `listOutput`, `input`, `request`, `listen`), `HttpOutput` (accès typé strict), `ApiException`, hooks d'auth (token Bearer, refresh + retry sur 401, callback de déconnexion), `ApiFilterBuilder`, interfaces DTO |
+| **API** (`lib/api/`) | `Http` (7 points d'entrée : `output`, `listOutput`, `input`, `request`, `listen`, `multipart` pour les envois de fichiers, `rawBytes` pour les téléchargements binaires), `HttpOutput` (accès typé strict), `ApiException`, hooks d'auth (token Bearer, refresh + retry sur 401, callback de déconnexion), décodeurs SSE / NDJSON pour `Http.listen` (`api/http/transformers/`), `ApiFilterBuilder`, interfaces DTO, contrôleurs (`api/controllers/` : toasts, redirections, modale de confirmation autour des appels de service) |
 | **State** (`lib/providers/`) | `ErrorProvider` (toasts globaux), `ConnectivityProvider` (hors ligne), `ModalProvider` (modales globales), `BaseAsyncProvider`, helpers `renderConsumer` / `renderSelector` |
-| **Routing** (`lib/routing/`) | `GoRouter` + `ShellRoute` (header + modales), page 404, transitions courtes désactivées en « réduire les animations », `FullPageTemplate` |
-| **Widgets** (`lib/widgets/`) | Layout (`AppHeader` responsive, `OfflineBanner`, `ErrorToastCard`, `AppModal`, `ModalConsumer`, `PageTitleBar`), `Listing<T>` (pagination lazy, états vide / erreur / retry), `Loader`, `SkeletonPulse` |
-| **Thème** (`lib/theme/`) | Material 3 clair + sombre depuis une couleur de marque, tokens `ColorScheme` uniquement |
+| **Routing** (`lib/routing/`) | `GoRouter` + `ShellRoute` (header + modales), page 404, transitions courtes désactivées en « réduire les animations », gabarits de page `FullPageTemplate` (un panneau), `SplittedPageTemplate` (deux panneaux côte à côte, empilés sur écran étroit) et `FollowUpPageTemplate` (page de suite d'action : retour, contenu défilant, actions épinglées en bas) |
+| **Widgets** (`lib/widgets/`) | Layout (`AppHeader` responsive, `OfflineBanner`, `ErrorToastCard`, `AppModal`, `ModalConsumer`, `PageTitleBar`), `Listing<T>` (pagination lazy, états vide / erreur / retry), `Loader`, `SkeletonPulse`, et 89 widgets génériques dans `custom/` (feuilles, saisie et sélection, badges, barres, graphiques `fl_chart`, cartes `flutter_map`, états vides / verrouillés…) : catalogue dans [`lib/widgets/custom/README.md`](lib/widgets/custom/README.md) |
+| **Thème** (`lib/theme/`) | Material 3 clair + sombre depuis une couleur de marque, tokens `ColorScheme` uniquement, extension `StatusTones` (tons de statut contrastés ≥ 4.5:1 en clair et en sombre) |
 | **i18n** | Français (référence) + anglais, test de parité des clés |
 | **Outillage** | Générateurs de widgets et de services (`cli/`), lints stricts + `solid_lints`, gate qualité (`tooling/hooks/test-gate.sh`) branchée sur le hook `Stop` de Claude Code |
-| **Tests** | 85 tests unitaires et widgets (Http sans réseau via `MockClient`, Listing, layout, démo, routeur avec vraies traductions) |
+| **Tests** | 3 217 tests unitaires et widgets (Http sans réseau via `MockClient`, Listing, layout, démo, routeur avec vraies traductions, un fichier de test par widget de `custom/`, contraste des tons de statut) |
 
 ## Architecture
 
@@ -48,7 +48,7 @@ lib/
   providers/    ChangeNotifier globaux
   routing/      pages/ · router/ · templates/
   theme/        AppTheme
-  utils/        Env, LoadState, parsers, builders
+  utils/        Env, LoadState, ActionState, requireAuth, Coords, géo (aire, forme, GeoJSON, boussole), parsers, formatters, extensions, builders
   widgets/      core/render · core/decorators · custom · layout
   main.dart
 ```
@@ -66,7 +66,7 @@ dart cli/generation/widget/index.dart --className MyWidget --path core/render
 # Widget stateless (index + view)
 dart cli/generation/widget/index.dart --className MyBadge --path custom --stateless
 
-# Service + 4 DTOs (detail/list output, post/put input)
+# Service + contrôleur + 4 DTOs (detail/list output, post/put input)
 dart cli/generation/service/index.dart --className MyEntity --route my-entities
 ```
 
@@ -120,5 +120,5 @@ ajouter selon le projet.
 
 - Authentification (Firebase Auth, 2FA) — `Http` expose déjà les hooks de token.
 - Observabilité / analytics (Sentry, PostHog), notifications push (FCM).
-- Caches locaux (Hive), cartes, export PDF / CSV.
+- Caches locaux (Hive, cache de tuiles de carte), export PDF / CSV.
 - Golden tests et leur image Docker, Widgetbook, tests d'intégration ChromeDriver, MCP Flutter Driver.

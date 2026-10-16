@@ -7,7 +7,8 @@
 //
 // Related:
 //   AppHeader         — primary navigation bar at app-shell level
-//   FullPageTemplate  — places a PageTitleBar above every full page
+//   FullPageTemplate, SplittedPageTemplate, FollowUpPageTemplate
+//                     — place a PageTitleBar above every page
 
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/widgets/constants.dart";

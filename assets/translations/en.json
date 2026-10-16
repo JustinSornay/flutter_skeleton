@@ -11,11 +11,26 @@
     "back": "Back",
     "close": "Close",
     "loading": "Loading",
-    "retry": "Retry"
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "byte_units": {
+      "b": "{value} B",
+      "kb": "{value} KB",
+      "mb": "{value} MB",
+      "gb": "{value} GB"
+    },
+    "saved": "Changes saved.",
+    "created": "Item created.",
+    "deleted": "Item deleted.",
+    "delete": "Delete",
+    "delete_title": "Delete this item?",
+    "delete_message": "This cannot be undone.",
+    "not_found": "This item no longer exists."
   },
   "error": {
     "load_failed": "Unable to load data.",
-    "save_failed": "The change could not be saved."
+    "save_failed": "The change could not be saved.",
+    "delete_failed": "The item could not be deleted."
   },
   "offline": {
     "banner": "Offline"
@@ -33,7 +48,14 @@
   "todo": {
     "title": "Task details",
     "user": "User #{id}",
-    "completed": "Done"
+    "completed": "Done",
+    "saved": "Task saved.",
+    "not_found": "This task no longer exists.",
+    "delete": "Delete",
+    "delete_title": "Delete this task?",
+    "delete_message": "It will be removed from the list. This cannot be undone.",
+    "deleted": "Task deleted.",
+    "delete_failed": "The task could not be deleted."
   },
   "settings": {
     "title": "Settings",
@@ -43,6 +65,399 @@
   "language": {
     "fr": "Français",
     "en": "English"
+  },
+  "custom": {
+    "async_picker_sheet": {
+      "close": "Close",
+      "submit_failed": "This action could not be completed. Please try again."
+    },
+    "async_summary_card": {
+      "loading": "Loading content…",
+      "unavailable": "Content unavailable for now.",
+      "retry": "Retry"
+    },
+    "auth_locked_state": {
+      "sign_in": "Sign in"
+    },
+    "autocomplete_search": {
+      "hint": "Search…",
+      "no_results": "No results",
+      "results": "Results: {count}"
+    },
+    "card_table": {
+      "empty": "No data to display."
+    },
+    "clustered_value_axis": {
+      "cluster": "{count} items",
+      "count": "Items: {count}",
+      "best": "Top {value}",
+      "reference": "Reference",
+      "reference_group": "Ref. + {count}",
+      "open_group": "Show the {count} items"
+    },
+    "collapsed_gate_group": {
+      "summary": "Locked features ({count})",
+      "unlock_all": "Unlock all",
+      "expand": "Show features",
+      "collapse": "Hide features"
+    },
+    "collapsible_section_card": {
+      "expand": "Expand section",
+      "collapse": "Collapse section"
+    },
+    "comparison_bar": {
+      "readout": "{baseline} → {comparison}",
+      "readout_unchanged": "{value} =",
+      "semantics_better": "{label}: from {from} to {to}, better",
+      "semantics_worse": "{label}: from {from} to {to}, worse",
+      "semantics_unchanged": "{label}: {value}, unchanged"
+    },
+    "comparison_panel": {
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "show_details": "Show details",
+      "hide_details": "Hide details",
+      "callout": "{label}: {from} → {to}",
+      "summary_semantics": "{current} compared with {candidate}"
+    },
+    "comparison_picker": {
+      "slot_a": "A",
+      "slot_b": "B",
+      "secondary": "Other suggestions",
+      "add": "Add",
+      "select_a": "Select {label} as A",
+      "select_b": "Select {label} as B",
+      "locked_a": "{label} locked as A",
+      "loading": "Loading"
+    },
+    "confidence_badge": {
+      "title": "Data reliability",
+      "high": "High",
+      "moderate": "Moderate",
+      "low": "Low",
+      "label": "{title}: {level}",
+      "tooltip": "{title}: {level} ({percent})"
+    },
+    "context_action_bar": {
+      "semantics_label": "Available actions"
+    },
+    "context_header": {
+      "change": "Change",
+      "loading": "Loading"
+    },
+    "delta_cards": {
+      "increase": "Increase",
+      "decrease": "Decrease",
+      "stable": "Stable",
+      "shift": "Changed"
+    },
+    "edit_fields_sheet": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "save_failed": "The changes could not be saved."
+    },
+    "editable_value_row": {
+      "edit": "Edit",
+      "edit_semantics": "{action}: {value}"
+    },
+    "email_verification_prompt": {
+      "title": "Check your email",
+      "body": "A verification link has been sent to {email}. Click the link, then come back here.",
+      "confirm": "I've verified my email",
+      "resend_label": "Didn't receive it?",
+      "resend_action": "Resend",
+      "resend_countdown": "Resend in {seconds}s",
+      "not_verified": "Email not verified yet. Check your spam folder.",
+      "check_failed": "Verification check failed. Please try again.",
+      "close": "Close"
+    },
+    "expandable_card": {
+      "expand": "Expand",
+      "collapse": "Collapse"
+    },
+    "expandable_group_tile": {
+      "expand": "Expand group",
+      "collapse": "Collapse group"
+    },
+    "explainer_sheet": {
+      "title": "Why this result?",
+      "empty": "No significant factor",
+      "learn_more": "Learn more"
+    },
+    "feature_gate": {
+      "title": "Locked feature",
+      "locked": "Locked",
+      "unlock": "Unlock",
+      "semantics": "{label}: locked feature"
+    },
+    "file_upload_panel": {
+      "pick": "Select files",
+      "clear": "Clear",
+      "submit": "Upload",
+      "uploading": "Uploading…",
+      "success": "Files uploaded successfully.",
+      "failed": "Upload failed.",
+      "read_error": "Unable to read the selected files. Please try again."
+    },
+    "filterable_data_table": {
+      "all": "All",
+      "empty": "No data available.",
+      "delta_up": "Up {value}",
+      "delta_down": "Down {value}",
+      "delta_none": "No change"
+    },
+    "history_timeline": {
+      "current": "Current",
+      "resume_here": "Resume here",
+      "older": "earlier",
+      "show_older": "Show older entries ({count})"
+    },
+    "icon_list_panel": {
+      "empty": "No items"
+    },
+    "level_progress_bar": {
+      "counter": "{count}/{total} {label}",
+      "next_title": "At the next level:",
+      "next_action": "Move up a level",
+      "semantics": "Level {current} of {count}: {label}"
+    },
+    "list_entry_card": {
+      "open_hint": "Open details"
+    },
+    "location_bar": {
+      "placeholder": "Search for a place…",
+      "cancel": "Cancel",
+      "currently_at": "Currently: {name}",
+      "unknown_place": "Selected location",
+      "my_location": "My location",
+      "modify_semantics": "Edit selected location"
+    },
+    "map_export_overlay": {
+      "north": "North",
+      "north_short": "N",
+      "legend_label": "Legend"
+    },
+    "map_pin": {
+      "label": "Location pin"
+    },
+    "map_polygon_editor": {
+      "label": "Polygon editor, vertices: {count}",
+      "hint": "Tap the map to add a vertex, tap an edge to insert one, drag a vertex to move it.",
+      "vertex": "Vertex {index}"
+    },
+    "map_thumbnail": {
+      "semantics": "Map preview: latitude {lat}, longitude {lon}"
+    },
+    "master_list_panel": {
+      "create": "New",
+      "tab_label": "{label} ({count})",
+      "loading": "Loading the list",
+      "error_title": "Could not load the list",
+      "error_hint": "Check your connection.",
+      "retry": "Retry",
+      "empty_title": "Nothing here yet",
+      "archived_pill": "Archived ({count})",
+      "archived_title": "Archived items",
+      "archived_empty": "No archived items",
+      "more_tags": "{count} more"
+    },
+    "metric_tile": {
+      "no_value": "No value"
+    },
+    "multi_select_sheet": {
+      "confirm": "Confirm",
+      "counter": "{count} selected",
+      "counter_max": "{count}/{max} selected",
+      "empty": "No items available."
+    },
+    "pill_link": {
+      "learn_more": "Learn more"
+    },
+    "polygon_editor_panel": {
+      "hint": "Tap the map to add points",
+      "reset": "Reset",
+      "undo": "Undo",
+      "save": "Save"
+    },
+    "polygon_form_sheet": {
+      "close": "Close",
+      "selection_label": "Selection",
+      "change_selection": "Change selection",
+      "selection_error": "Could not load this item. Please try again.",
+      "draw_label": "Boundary",
+      "draw_hint": "Tap the map to add points",
+      "undo": "Undo",
+      "reset": "Reset",
+      "point_count": "Points: {count}",
+      "crossing_edges": "Edges cross: move or remove a point.",
+      "name_label": "Name (optional)",
+      "submit": "Confirm",
+      "submit_error": "Could not save. Please try again."
+    },
+    "polygon_wizard_sheet": {
+      "back": "Back",
+      "next": "Next",
+      "submit": "Create",
+      "submit_error": "Creation failed. Please try again.",
+      "undo": "Undo",
+      "reset": "Reset",
+      "points_placed": "{count} point(s) placed",
+      "crossing_edges": "Edges cross: move or remove a point.",
+      "loading": "Loading",
+      "name_label": "Name",
+      "default_name": "Untitled",
+      "selection_label": "Selection",
+      "selected_count": "{count} selected",
+      "selection_error": "Could not load this item. Please try again.",
+      "remove_item": "Remove {label}",
+      "points_label": "Vertices",
+      "points_count": "{count} vertex(es) drawn",
+      "step_semantics": "Step {current} of {total}: {title}"
+    },
+    "preview_confirm_sheet": {
+      "confirm": "Confirm",
+      "cancel": "Cancel"
+    },
+    "progress_status_view": {
+      "cancel": "Cancel"
+    },
+    "qualitative_score_bar": {
+      "no_data": "Insufficient data",
+      "semantics_label": "{prefix}: {level}"
+    },
+    "quota_bar": {
+      "limit_reached": "Limit reached",
+      "unlimited": "Unlimited",
+      "usage_value": "{used} of {limit}"
+    },
+    "radar_chart_card": {
+      "help": "Learn more",
+      "axis_weight": "{label} ({percent})",
+      "axis_value": "{label}: {percent}",
+      "comparison": "Comparison"
+    },
+    "range_envelope_bar": {
+      "insufficient_data": "Insufficient data",
+      "semantics_range": "{label}: from {min} to {max}"
+    },
+    "ranked_badge_list": {
+      "show_all": "Show all ({count})",
+      "show_less": "Show less"
+    },
+    "ranked_list": {
+      "count": "({count})",
+      "empty": "No items to display.",
+      "item_semantics": "Rank {rank}: {label}"
+    },
+    "ranked_list_panel": {
+      "rank": "Rank {rank}"
+    },
+    "score_banner": {
+      "value": "{value} / 100",
+      "value_semantics": "Score: {value} out of 100",
+      "link": "Why this result?"
+    },
+    "score_list_card": {
+      "empty": "Nothing to show.",
+      "load_error": "Could not load the list.",
+      "retry": "Retry",
+      "loading": "Loading",
+      "score_semantics": "score {value}"
+    },
+    "search_field": {
+      "hint": "Search…",
+      "clear": "Clear search"
+    },
+    "segmented_picker": {
+      "unavailable": "Unavailable"
+    },
+    "selection_chip_bar": {
+      "remove": "Remove {label}"
+    },
+    "selection_strip": {
+      "prefix": "Viewing:",
+      "edit": "Change",
+      "edit_semantics": "{action}: {value}"
+    },
+    "severity_badge": {
+      "low": "Low severity",
+      "medium": "Medium severity",
+      "high": "High severity"
+    },
+    "single_select_sheet": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "confirm": "Save"
+    },
+    "snap_bottom_sheet": {
+      "handle": "Panel handle",
+      "expand": "Expand panel",
+      "collapse": "Collapse panel"
+    },
+    "status_heatmap_row": {
+      "no_value": "no value"
+    },
+    "status_pill_group": {
+      "unavailable": "Data unavailable"
+    },
+    "status_strip": {
+      "reference": "Reference",
+      "comparison": "Comparison",
+      "reference_labelled": "{label} (ref.)",
+      "comparison_labelled": "{label} (test)",
+      "partial_agreement": "Partial agreement",
+      "full_disagreement": "Full disagreement",
+      "unknown": "Unknown",
+      "cell": "{period}: {status}",
+      "cell_comparison": "{period}: {primary} / {comparison}",
+      "cell_marker": "{cell}, {marker}"
+    },
+    "step_range_chart": {
+      "axis": "scale {min} to {max}",
+      "band": "{label}: {from} to {to}",
+      "value": "{label}: {value}",
+      "range": "range {low} to {high}",
+      "locked": "{label}: locked",
+      "unavailable": "{label}: not available",
+      "selected": "selected"
+    },
+    "thumbnail_metric_card": {
+      "delta": "Change {value}"
+    },
+    "trend_chart": {
+      "empty": "No data yet.",
+      "insufficient_data": "Not enough data to show a reliable trend.",
+      "semantics": "Trend chart",
+      "threshold": "Threshold",
+      "threshold_crossed": "Threshold crossed"
+    },
+    "trend_split_section": {
+      "rising": "Rising",
+      "falling": "Falling",
+      "empty": "No items"
+    },
+    "value_matrix": {
+      "load_error": "Could not load the table.",
+      "retry": "Retry",
+      "empty": "No data available.",
+      "export_csv": "Export CSV",
+      "sort_hint": "Sort by this column",
+      "sorted_ascending": "Sorted ascending",
+      "sorted_descending": "Sorted descending",
+      "no_value": "No value"
+    },
+    "version_badge": {
+      "current": "Current version",
+      "outdated": "Outdated version",
+      "learn_more": "Learn more"
+    },
+    "weighted_score_card": {
+      "score_semantics": "Aggregate score: {value} out of 100",
+      "alert": "Critical score (< {threshold})",
+      "alert_semantics": "Alert: critical score",
+      "load_error": "Loading error",
+      "weight_semantics": "{label}: {value}"
+    }
   },
   "about": {
     "title": "Flutter Skeleton",

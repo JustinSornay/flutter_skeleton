@@ -63,12 +63,12 @@ Shared helpers in `test/helpers/widget_test_helpers.dart`:
 
 | Helper | Use for |
 |---|---|
-| `pumpApp(tester, child, providers:)` | Isolated widgets; `.tr()` returns the raw key |
+| `pumpApp(tester, child, providers:, theme:)` | Isolated widgets; `.tr()` returns the raw key; `theme` defaults to `AppTheme.light()` |
 | `pumpWithRouter(tester, child, extraRoutes:)` | Widgets calling `context.go()` |
 | `pumpLocalizedRouter(tester, initialLocation:)` | The real shell (router + Layout + EasyLocalization with real translations); required when a widget reads `context.locale` |
 | `defaultTestProviders(offline:)` | Global providers without platform channels |
 
-**Injectable seam pattern:** static service methods aren't mockable. Render widgets and providers expose optional named function params (`getList`, `getTodo`, `patchTodo`, …) whose production default is the service method. Tests pass plain fake closures at construction time. See `TodoList` / `TodoDetail` and their tests.
+**Injectable seam pattern:** static service methods aren't mockable. Render widgets and providers expose optional named function params (`getList`, …) whose production default is the service method; widgets that go through a controller take the controller instead (`TodoDetail(controller: TodoController(getTodo: fake))`). Tests pass plain fake closures at construction time. See `TodoList` / `TodoDetail` / `TodoController` and their tests.
 
 ## Environment
 
@@ -99,6 +99,8 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 | `flutter_dotenv` | `.env.local` loading at startup |
 | `easy_localization` | i18n with JSON translation files (persists the chosen locale) |
 | `connectivity_plus` | Network status stream (`OfflineBanner`) |
+| `fl_chart` | Charts in `widgets/custom/` |
+| `flutter_map` + `latlong2` | Tile maps in `widgets/custom/` |
 | `logger` | Logging |
 | `custom_lint` + `solid_lints` (dev) | Complexity metrics |
 | `jinja` + `args` (dev) | Code generators |
@@ -109,38 +111,40 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 
 - **Look before you create**: search `utils/`, `widgets/custom/`, `api/http/` before writing anything new. Use the existing `Listing` widget for paginated lazy-loaded lists.
 - **No project-specific names**: keep nomenclature generic (`api`, `dto`, `model`) — never use the app name in folder/variable names.
-- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`).
+- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`, `lib/api/controllers/`, `lib/utils/`).
 - **Mirror existing patterns**: inspect similar files before writing new ones.
-- **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate`, which already does). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
+- **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate` / a `SplittedPageTemplate` panel, which already do; never `FollowUpPageTemplate`, whose body scrolls). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
 
 ### Directory Structure (`lib/`)
 
 ```
 api/
+  controllers/  # User-facing flows around service calls (toasts, redirection, confirmation) (+ _base/confirmAction)
   dtos/         # Data Transfer Objects (input/ and output/ sub-folders per entity)
-  http/         # Http utility class, HttpOutput, ApiException, enums
+  http/         # Http utility class, HttpOutput, HttpFile, ApiException, enums, transformers/ (SSE, NDJSON)
   services/     # One service class per entity (+ _base/apiFilterBuilder)
 data/           # Static in-memory data (nav entries, locale config)
 providers/      # ChangeNotifier providers (+ _base helpers)
 routing/
   pages/        # Page widgets: thin template + render widget wrappers
   router/       # GoRouter config
-  templates/    # Page layout templates (FullPageTemplate)
-theme/          # AppTheme (light / dark from one seed colour)
-utils/          # Env, LoadState, parsers, builders, logger filters
+  templates/    # Page layout templates (FullPageTemplate, SplittedPageTemplate, FollowUpPageTemplate)
+theme/          # AppTheme (light / dark from one seed colour), StatusTones
+utils/          # Env, LoadState, ActionState, requireAuth, Coords, geo (area, shape, GeoJSON, compass), parsers, formatters, extensions, builders, logger filters (see its README)
 widgets/
   constants.dart  # spacing grid, content width, motion, resolveMotion()
   core/
     render/     # Screen-level MVVM triads (index + view_model + view)
     decorators/ # Content-agnostic wrappers (SkeletonPulse)
-  custom/       # Generic reusable widgets (Listing, Loader)
+  custom/       # Generic reusable widgets (Listing, Loader, …)
+    _base/      # Shared value classes: ChoiceOption<T>, ValueBand
   layout/       # App shell, global overlays, banners
 main.dart       # Bootstrap, providers, MaterialApp.router
 ```
 
 Create `models/` (plain Dart models, sealed unions) and `services/` (local, non-API services: cache, export…) when the first one is needed.
 
-The **demo feature** (todos from JSONPlaceholder) spans `api/dtos/todo/`, `api/services/todo_service.dart`, `widgets/core/render/Todo*/`, `routing/pages/{home,todo}_page.dart` and their tests. It exists to show every layer working together; delete it when starting a real project.
+The **demo feature** (todos from JSONPlaceholder) spans `api/dtos/todo/`, `api/services/todo_service.dart`, `api/controllers/todo_controller.dart`, `widgets/core/render/Todo*/`, `routing/pages/{home,todo}_page.dart` and their tests. It exists to show every layer working together; delete it when starting a real project.
 
 ### Coding conventions
 
@@ -218,7 +222,7 @@ Complex `widgets/core/render/` components may extend the 3-file pattern with two
 - `controllers/` — plain Dart classes (not State, not ChangeNotifier) that encapsulate a discrete piece of business logic. Instantiated and owned by the view-model.
 - `widgets/` — small stateless composable pieces used only within that render widget. Each is a single file (no folder); never imported from outside.
 
-Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loading`, `Loaded`, `LoadError`) with an exhaustive `switch` in the view — not ad-hoc `isLoading` / `hasError` / `data` triples.
+Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loading`, `Loaded`, `LoadError`) with an exhaustive `switch` in the view — not ad-hoc `isLoading` / `hasError` / `data` triples. A one-shot action with no data to show (export, share, upload) whose success or error phase is rendered uses `ActionState` (`utils/action_state.dart`); a plain `isSaving` bool is enough when only the busy state matters.
 
 ### API Layer
 
@@ -230,29 +234,38 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - Parse via `output.cast<T>("key")`, `output.output("key")`, `output.outputList("key")` — never read `output.json` directly for typed fields. `cast` is strict: missing key or wrong type throws.
 - Inputs extend `AbstractInput` and implement `Map<String, dynamic> toJson()`, omitting unset optional fields
 - Specs that provide `fromJson(Map<String, dynamic>)` patterns must be converted to `fromOutput(HttpOutput)`
+- GeoJSON polygons go through `utils/geo/geojson.dart` (`polygonToGeoJson` in inputs' `toJson()`, `geoJsonOuterRings` in outputs) — never hand-roll the `[lon, lat]` flip or the ring closing
 
 **Services**
-- One class per entity (`TodoService`, …); generate them with the service generator
+- One class per entity (`TodoService`, …); generate them with the service generator (it also writes the entity's controller)
 - All methods are `static Future<T>`
-- Always use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request`, or `Http.listen`
-- Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` — every service catch block is an observability checkpoint; a bare rethrow is incomplete
+- Always use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request`, `Http.listen`, `Http.multipart` or `Http.rawBytes`
+- Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` (or the equivalent `.withErrorLog("ServiceName.methodName")` from `utils/extensions/future_extensions.dart`) — every service catch block is an observability checkpoint; a bare rethrow is incomplete
 - Pass an `ApiFilterBuilder` as `queryBuilder` for filtered/paginated list calls
+
+**Controllers** (`api/controllers/`, see its README)
+- Sit between view models and services, like API controllers: they call services and own what the user experiences around the call — error toasts, redirection, the meaning of a status code for the flow (404 = gone, 409 = exists), auth and multi-step flows, confirmation modal (`confirmAction`), feedback overlay, success toast (`AppErrorLevel.success`)
+- One `final class <Entity>Controller` per entity or flow, `const` constructor whose params are the service calls defaulting to the static service methods (test seam); the service generator writes one per entity (load / create / update / delete with generic `common.*` messages and a `listLocation` redirect)
+- Methods are `Future<T>` taking `BuildContext` first and never throw: the return value (`LoadState<T>`, `T?`, `bool`) tells the view model what happened; local UI state stays in the view model
+- Read providers before the first `await`; after it, use the context only behind `context.mounted`
 
 **Http utility** (`api/http/http.dart`)
 - `Http.output` — GET → single `HttpOutput` (unwraps a `data` object envelope)
 - `Http.listOutput` — GET → `List<HttpOutput>` (accepts a bare array or a `data` envelope)
 - `Http.input` — POST/PUT/PATCH → `HttpOutput`
-- `Http.request` — HEAD/DELETE → void
-- `Http.listen` — streaming via `StreamTransformer`
+- `Http.request` — HEAD / DELETE / body-less PATCH (a state transition answering 204) → void; never sends a body
+- `Http.listen` — streaming via `StreamTransformer<List<int>, T>`; `api/http/transformers/` ships `SseTransformer` (text/event-stream) and `NdjsonTransformer` (one JSON object per line), both emitting `Map<String, dynamic>` with UTF-8 decoded across chunks — map them to DTOs in the listener with `HttpOutput.fromJson(json)`. Malformed JSON or invalid UTF-8 surfaces as a `FormatException`
+- `Http.multipart` — POST multipart/form-data: `files: List<HttpFile>` (`api/http/http_file.dart`: field, bytes, filename, optional `contentType` MIME, else `application/octet-stream`) + `fields: Map<String, String>` → `HttpOutput`; fresh parts are built for the 401 retry
+- `Http.rawBytes` — GET → `Uint8List` (binary downloads)
 
-Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). Routes must have no leading `/`.
+Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). All of them share one send path: Bearer header, one token refresh + retry on a 401, `onUnauthorized` when the retry with the refreshed token gets a 401 again; `Http.listen` included, before streaming (the listener is not called). Routes must have no leading `/`.
 
-Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls.
+Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls. For an action that needs a signed-in user, call `requireAuth(context)` (`utils/auth_gate.dart`): it returns true when a token exists, otherwise runs the sign-in flow the app registers with `AuthGate.setSignInHandler` (e.g. open a sign-in modal through `ModalProvider` and complete when it closes), then returns `Http.hasToken`. Concurrent calls share one flow.
 
 ### Providers
 
 Global providers registered in `main.dart` via `MultiProvider`:
-- `ErrorProvider` — global toast (`show(message, level:)`, auto-dismiss 3 s info / 5 s otherwise), rendered by `ErrorToastCard`
+- `ErrorProvider` — global toast (`show(message, level:)` with `info` / `success` / `warning` / `error`, auto-dismiss 3 s info and success / 5 s otherwise), rendered by `ErrorToastCard`
 - `ConnectivityProvider` — `isOffline`, rendered by `OfflineBanner`; `ConnectivityProvider.withState(offline:)` in tests
 - `ModalProvider` — `show(widget)` / `dismiss()`, rendered by `ModalConsumer` in the ShellRoute; pair it with `AppModal`
 
@@ -268,11 +281,15 @@ Uses `go_router`. Routes are declared in `routing/router/router.dart` under a `S
 
 To expose a page in the header, add a `NavItem` to `data/nav_items.dart` and the matching `GoRoute`.
 
-Pages (`routing/pages/`) are thin: a template (`FullPageTemplate`) plus the render widget it hosts. No state, no service calls.
+Pages (`routing/pages/`) are thin: a template plus the render widget(s) it hosts. No state, no service calls. Every template draws a `PageTitleBar` (title, optional back button calling `onBack`, optional `trailing` action):
+- `FullPageTemplate(title:, child:)` — one panel, body unscrolled (bounded height, capped at `kContentMaxWidth`): lists, `Listing`, screens that scroll themselves.
+- `SplittedPageTemplate(title:, primary:, secondary:, primaryWidth: 400)` — two panels side by side from `kSplitBreakpoint` (840 dp, measured on the template), stacked half / half below; both panels unscrolled (detail + map, list + preview).
+- `FollowUpPageTemplate(title:, onBack:, child:, actions:)` — page reached after an action: back button always shown, padded scrolling body capped at `kContentMaxWidth`, next-step `actions` pinned at the bottom.
 
 **Navigation rules:**
 - Always use `context.go()` — never `context.push()`. This is a URL-driven app; `push()` stacks history entries and breaks back-button behavior.
 - Dialogs are mounted with `ModalProvider.show(AppModal(...))`, not `Navigator.push` / `showDialog`.
+- Bottom sheets: `custom/` sheets are content-only (no drag handle, no provider / service / `context.go`). The host mounts them with `showModalBottomSheet(showDragHandle: true, …)` or `ModalProvider.show(AppModal(...))` and reacts to their callbacks. See `lib/widgets/custom/README.md`.
 - Guards: add a `redirect` to `createRouter()` and pass the providers it reads as `refreshListenable`.
 - `Layout` (installed by `MaterialApp.router.builder`) sits **above** the Navigator: widgets rendered there have no `Overlay` (no `Tooltip`, no `PopupMenuButton`).
 
@@ -282,6 +299,8 @@ Handled by `EasyLocalization`. Supported locales and asset path live in `data/lo
 
 - **Canonical reference:** `fr.json` — every other locale must match its key set exactly (enforced by `test/unit/translations_test.dart`).
 - **Import rule:** `easy_localization` must be imported in the parent `index.dart`, not in `view.dart` (part files have no imports).
+- Shared unit labels live under `common.*` (e.g. `common.byte_units.*` for `ByteSize`).
+- Numbers and dates: intl `NumberFormat` / `DateFormat` with `numberLocaleOf(context)` / `dateLocaleOf(context)` (`utils/formatters/intl_locale.dart`). `main.dart` loads the date data with `initializeDateFormatting()`; without it intl only knows `en_US` and any other locale throws.
 - **Parametric keys** use `namedArgs`: `"todo.user".tr(namedArgs: <String, String>{"id": "$id"})` → `"Utilisateur n°{id}"`.
 - Never hardcode user-visible strings in widgets.
 
@@ -290,6 +309,8 @@ Handled by `EasyLocalization`. Supported locales and asset path live in `data/lo
 `theme/app_theme.dart` builds Material 3 light and dark themes from one seed colour (`AppTheme.seed`, `#3B7054`); `main.dart` uses both (`ThemeMode.system`). Tests use the same `AppTheme.light()`.
 
 **Never hardcode colours in widgets.** Always read `ColorScheme` tokens (`cs.primary`, `cs.surface`, `cs.onSurface`, `cs.onSurfaceVariant`, `cs.outlineVariant`, `cs.error`, `cs.errorContainer`, …) so both brightnesses stay correct.
+
+Status colours come from the `StatusTones` theme extension (`theme/status_tones.dart`, registered by `AppTheme`): `StatusTones.colorsOf(context, StatusTone.success)` returns `ToneColors(foreground, container, onContainer)` for `neutral`, `primary`, `info`, `success`, `warning`, `danger` (each ≥ 4.5:1, enforced by `test/unit/theme/status_tones_test.dart`). `StatusTone.icon` gives the non-colour cue. Widgets never declare their own tone enums; theme files are the only place hex values live.
 
 Spacing follows an 8 dp grid: use `kDefaultPadding` multiples, `kSectionGap` between sections, `kContentMaxWidth` for centred content (`widgets/constants.dart`).
 

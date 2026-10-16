@@ -22,12 +22,16 @@ import "package:flutter_skeleton/routing/router/router.dart";
 import "package:flutter_skeleton/theme/app_theme.dart";
 import "package:flutter_skeleton/widgets/layout/layout.dart";
 import "package:go_router/go_router.dart";
+import "package:intl/date_symbol_data_local.dart";
 import "package:provider/provider.dart";
 
 /// Initializes async dependencies in sequence, then launches the app.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  // DateFormat data for every locale: without it, intl only knows en_US and
+  // any other locale throws a LocaleDataException.
+  await initializeDateFormatting();
   await dotenv.load(fileName: ".env.local");
 
   runApp(

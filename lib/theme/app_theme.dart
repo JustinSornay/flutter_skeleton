@@ -5,10 +5,11 @@
 // exact production theme.
 //
 // Widgets never hardcode colours: they read ColorScheme tokens
-// (cs.primary, cs.surface, cs.outlineVariant, cs.error…) so both
-// brightnesses stay consistent.
+// (cs.primary, cs.surface, cs.outlineVariant, cs.error…) and the StatusTones
+// extension (status_tones.dart) so both brightnesses stay consistent.
 
 import "package:flutter/material.dart";
+import "package:flutter_skeleton/theme/status_tones.dart";
 
 /// Builds the application [ThemeData] for each brightness.
 abstract final class AppTheme {
@@ -29,6 +30,7 @@ abstract final class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
       dividerTheme: DividerThemeData(color: colorScheme.outlineVariant, space: 1),
+      extensions: <ThemeExtension<dynamic>>[StatusTones.fromScheme(colorScheme)],
     );
   }
 }
