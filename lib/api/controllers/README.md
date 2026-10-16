@@ -21,8 +21,8 @@ that call**.
    - the meaning of a status code for this flow (404 on a delete = already
      gone, 409 on a create = already exists, 403 = not allowed…).
 3. **Runs complex flows**: authentication gates (`if (!await
-   requireAuth(context)) return;` from `utils/auth_gate.dart`, then the
-   call), multi-step business flows (create → upload → confirm), chained
+   requireAuth(context)) return false;` from `utils/auth_gate.dart`, then
+   the call), multi-step business flows (create → upload → confirm), chained
    calls whose order matters.
 4. **Owns the behaviour tied to a call**:
    - a confirmation modal before a destructive or irreversible call

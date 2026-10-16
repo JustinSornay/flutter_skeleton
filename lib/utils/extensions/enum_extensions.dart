@@ -8,8 +8,10 @@ extension EnumIterableExtensions<E extends Enum> on Iterable<E> {
   /// The first value that satisfies [test].
   ///
   /// When none does, returns [orElse]'s result, or throws a [StateError] if
-  /// [orElse] is omitted. Example: `Status.values.by((Status s) => s.name == raw,
-  /// orElse: () => Status.unknown)`.
+  /// [orElse] is omitted. Example:
+  /// `Level.values.by((Level l) => score >= l.threshold, orElse: () => Level.low)`.
+  /// For a lookup by name, the SDK already has `values.byName(raw)` and
+  /// `values.asNameMap()[raw]`.
   E by(bool Function(E value) test, {E Function()? orElse}) {
     return firstWhere(test, orElse: orElse);
   }

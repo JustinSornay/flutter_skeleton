@@ -48,7 +48,7 @@ lib/
   providers/    ChangeNotifier globaux
   routing/      pages/ · router/ · templates/
   theme/        AppTheme
-  utils/        Env, LoadState, ActionState, requireAuth, Coords, géo, parsers, extensions
+  utils/        Env, LoadState, ActionState, requireAuth, Coords, géo, parsers, extensions, builders
   widgets/      core/render · core/decorators · custom · layout
   main.dart
 ```

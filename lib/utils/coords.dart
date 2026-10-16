@@ -4,6 +4,10 @@
 // canonical "lat_lon" key segment from it. Use it for every cache key built
 // from a location (local cache, and a backend cache when the server rounds
 // the same way), so nearby points share one entry and keys stay aligned.
+//
+// Dart's double.round() returns an int, so a value just below zero snaps to
+// 0.0 and is written "0.000". A server that must produce the same keys has to
+// do the same (Go's math.Round + "%.3f" writes "-0.000" for -0.0001).
 
 /// Grid snapping for geographic coordinates.
 abstract final class Coords {
@@ -15,7 +19,7 @@ abstract final class Coords {
   static (double, double) snapToGrid(double lat, double lon, {int decimals = defaultDecimals}) {
     _checkRange(lat, lon);
     final double factor = _factor(decimals);
-    return (_snap(lat, factor), _snap(lon, factor));
+    return ((lat * factor).round() / factor, (lon * factor).round() / factor);
   }
 
   /// The canonical `"<lat>_<lon>"` key segment, snapped to [decimals] and
@@ -23,13 +27,6 @@ abstract final class Coords {
   static String formatKey(double lat, double lon, {int decimals = defaultDecimals}) {
     final (double sLat, double sLon) = snapToGrid(lat, lon, decimals: decimals);
     return "${sLat.toStringAsFixed(decimals)}_${sLon.toStringAsFixed(decimals)}";
-  }
-
-  /// Rounds [value] on the grid; -0.0 becomes 0.0 so both sides of zero
-  /// share one key.
-  static double _snap(double value, double factor) {
-    final double snapped = (value * factor).round() / factor;
-    return snapped == 0 ? 0.0 : snapped;
   }
 
   static double _factor(int decimals) {

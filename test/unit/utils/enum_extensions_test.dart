@@ -12,6 +12,10 @@ void main() {
     expect(_Fruit.values.by((_Fruit f) => f.name == "pear"), _Fruit.pear);
   });
 
+  test("returns the first of several matching values", () {
+    expect(_Fruit.values.by((_Fruit f) => f != _Fruit.apple), _Fruit.pear);
+  });
+
   test("falls back to orElse when nothing matches", () {
     expect(_Fruit.values.by((_Fruit f) => f.name == "kiwi", orElse: () => _Fruit.unknown), _Fruit.unknown);
   });

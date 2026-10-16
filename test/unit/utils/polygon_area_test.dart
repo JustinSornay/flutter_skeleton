@@ -4,6 +4,8 @@
 // a reference polygon checked against PostGIS, open vs closed rings, the
 // antimeridian and vertex order.
 
+import "dart:math" as math;
+
 import "package:flutter_skeleton/utils/geo/polygon_area.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:latlong2/latlong.dart";
@@ -73,5 +75,15 @@ void main() {
     const List<LatLng> ring = <LatLng>[LatLng(47.0, 5.0), LatLng(47.0, 5.01), LatLng(47.01, 5.01)];
 
     expect(geodesicAreaHectares(ring.reversed.toList()), closeTo(geodesicAreaHectares(ring), 1e-6));
+  });
+
+  test("a ring around a pole measures the polar cap, not the rest of the Earth", () {
+    final List<LatLng> ring = <LatLng>[for (int lon = -180; lon < 180; lon += 5) LatLng(80, lon.toDouble())];
+    // Spherical cap above 80°N: 2πR²(1 − sin 80°).
+    const double r = 6378137.0;
+    final double capHectares = 2 * math.pi * r * r * (1 - math.sin(80 * math.pi / 180)) / 10000;
+
+    expect(geodesicAreaHectares(ring), closeTo(capHectares, capHectares * 0.01));
+    expect(geodesicAreaHectares(ring.reversed.toList()), closeTo(capHectares, capHectares * 0.01));
   });
 }

@@ -12,12 +12,19 @@ import "package:latlong2/latlong.dart";
 /// WGS84 equatorial radius in metres (the radius PostGIS `geography` uses).
 const double _earthRadiusMeters = 6378137.0;
 
+/// Surface of that sphere, in square metres.
+const double _sphereSquareMeters = 4 * math.pi * _earthRadiusMeters * _earthRadiusMeters;
+
 /// Returns the geodesic area, in hectares, of the polygon ring [ring].
 ///
 /// The ring need not repeat its first vertex at the end: the edge from the
 /// last vertex back to the first is always included. Returns 0 for fewer
 /// than 3 vertices. Longitude deltas are normalised to (-180°, 180°], so a
 /// polygon crossing the antimeridian is measured correctly.
+///
+/// On a sphere a ring splits the surface in two; the smaller side is
+/// returned (so a ring around a pole measures the polar cap, not the rest of
+/// the Earth). Polygons larger than a hemisphere are therefore not supported.
 double geodesicAreaHectares(List<LatLng> ring) {
   if (ring.length < 3) return 0;
 
@@ -32,7 +39,7 @@ double geodesicAreaHectares(List<LatLng> ring) {
   }
 
   final double areaSquareMeters = (total * _earthRadiusMeters * _earthRadiusMeters / 2).abs();
-  return areaSquareMeters / 10000.0;
+  return math.min(areaSquareMeters, _sphereSquareMeters - areaSquareMeters) / 10000.0;
 }
 
 /// [degrees] brought into (-180, 180].

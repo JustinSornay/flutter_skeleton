@@ -222,7 +222,7 @@ Complex `widgets/core/render/` components may extend the 3-file pattern with two
 - `controllers/` — plain Dart classes (not State, not ChangeNotifier) that encapsulate a discrete piece of business logic. Instantiated and owned by the view-model.
 - `widgets/` — small stateless composable pieces used only within that render widget. Each is a single file (no folder); never imported from outside.
 
-Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loading`, `Loaded`, `LoadError`) with an exhaustive `switch` in the view — not ad-hoc `isLoading` / `hasError` / `data` triples.
+Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loading`, `Loaded`, `LoadError`) with an exhaustive `switch` in the view — not ad-hoc `isLoading` / `hasError` / `data` triples. A one-shot action with no data to show (export, share, upload) whose success or error phase is rendered uses `ActionState` (`utils/action_state.dart`); a plain `isSaving` bool is enough when only the busy state matters.
 
 ### API Layer
 
@@ -257,7 +257,7 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 
 Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). Routes must have no leading `/`.
 
-Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls. For an action that needs a signed-in user, call `requireAuth(context)` (`utils/auth_gate.dart`): it returns true when a token exists, otherwise runs the sign-in flow the app registers with `AuthGate.setSignInHandler` (open a sign-in modal through `ModalProvider`, complete with the outcome).
+Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls. For an action that needs a signed-in user, call `requireAuth(context)` (`utils/auth_gate.dart`): it returns true when a token exists, otherwise runs the sign-in flow the app registers with `AuthGate.setSignInHandler` (e.g. open a sign-in modal through `ModalProvider` and complete when it closes), then returns `Http.hasToken`. Concurrent calls share one flow.
 
 ### Providers
 

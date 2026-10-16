@@ -40,4 +40,16 @@ void main() {
     await expectLater(Future<int>.error(error).withErrorLog("Service.get"), throwsA(same(error)));
     expect(output.lines.join("\n"), contains("Service.get: Bad state: boom"));
   });
+
+  test("keeps the original stack trace", () async {
+    final Future<int> failing = Future<int>.error(StateError("boom"), StackTrace.fromString("origin-frame"));
+
+    StackTrace? trace;
+    try {
+      await failing.withErrorLog("Service.get");
+    } catch (_, st) {
+      trace = st;
+    }
+    expect(trace.toString(), contains("origin-frame"));
+  });
 }

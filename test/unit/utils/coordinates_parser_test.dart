@@ -24,6 +24,12 @@ void main() {
       }
     });
 
+    test("returns null for non-finite numbers", () {
+      for (final String raw in <String>["NaN,0", "0,NaN", "Infinity,0", "0,-Infinity"]) {
+        expect(parseCoordinates(raw), isNull, reason: raw);
+      }
+    });
+
     test("returns null out of range", () {
       expect(parseCoordinates("90.1,0"), isNull);
       expect(parseCoordinates("0,-180.1"), isNull);
@@ -38,6 +44,11 @@ void main() {
 
     test("treats zero as north and east", () {
       expect(formatCoordinates(0, 0), "0.00°N  0.00°E");
+    });
+
+    test("writes N / E for negative values that round to zero", () {
+      expect(formatCoordinates(-0.001, -0.004), "0.00°N  0.00°E");
+      expect(formatCoordinates(-0.005, -0.006), "0.01°S  0.01°W");
     });
   });
 }
