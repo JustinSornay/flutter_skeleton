@@ -1,9 +1,11 @@
 // http.dart
 //
 // Central HTTP utility for all backend communication. Services never touch
-// the http package directly — they call one of the five static factory methods
-// (output, listOutput, input, request, listen) which handle request
-// construction, auth headers, response parsing, error mapping, and logging.
+// the http package directly — they call one of the static factory methods
+// (output, listOutput, input, request, listen, multipart, rawBytes) which
+// handle request construction, auth headers, response parsing, error mapping,
+// and logging. Every one of them goes through the same send path (_open):
+// Bearer header, one token refresh + retry on 401, ApiException for 400+.
 //
 // Configuration is read from .env.local at runtime using the HttpApiEnum key
 // as a prefix (e.g. API_API_URL, API_API_SCHEME).
@@ -11,6 +13,7 @@
 // Relationships:
 //   - Used by every class in api/services/
 //   - Produces HttpOutput instances consumed by DTO .fromOutput() constructors
+//   - Sends HttpFile parts for multipart uploads (http_file.dart)
 //   - Throws ApiException for any HTTP 400+ response
 
 import "dart:async";
@@ -20,6 +23,7 @@ import "package:flutter/foundation.dart";
 import "package:flutter_skeleton/api/dtos/_base/input/abstract_input.dart";
 import "package:flutter_skeleton/api/http/api_exception.dart";
 import "package:flutter_skeleton/api/http/enums.dart";
+import "package:flutter_skeleton/api/http/http_file.dart";
 import "package:flutter_skeleton/api/http/http_output.dart";
 import "package:flutter_skeleton/api/services/_base/apiFilterBuilder/api_filter_builder.dart";
 import "package:flutter_skeleton/utils/env.dart";
@@ -38,6 +42,11 @@ final class Http {
   final String route;
   final ApiFilterBuilder? queryBuilder;
   final AbstractInput? body;
+  /// File parts of a multipart/form-data request ([Http.multipart]); null for
+  /// a JSON request. Fresh parts are built from them on every attempt.
+  final List<HttpFile>? files;
+  /// Text fields of a multipart/form-data request ([Http.multipart]).
+  final Map<String, String> fields;
 
   static String? Function()? _tokenProvider;
   static Future<String?> Function()? _tokenRefreshCallback;
@@ -79,9 +88,12 @@ final class Http {
 
   /// Builds the Authorization and Content-Type headers.
   /// When no token is available, no Authorization header is sent —
-  /// public API routes work without a token.
+  /// public API routes work without a token. Multipart requests set their own
+  /// Content-Type (with the part boundary).
   Map<String, String> get _headers {
-    final Map<String, String> headers = <String, String>{"Content-Type": "application/json"};
+    final Map<String, String> headers = <String, String>{
+      if (files == null) "Content-Type": "application/json",
+    };
 
     final String? token = _tokenProvider?.call();
     if (token != null && token.isNotEmpty) {
@@ -110,9 +122,13 @@ final class Http {
     required this.api,
     this.queryBuilder,
     this.body,
+    this.files,
+    this.fields = const <String, String>{},
   }):
-    // Body is required for write methods; routes must not start with a slash.
-    assert(body != null || <HttpMethodEnum>[HttpMethodEnum.get, HttpMethodEnum.delete, HttpMethodEnum.head].contains(method)),
+    // A JSON body or multipart parts are required for POST / PUT (PATCH may be
+    // body-less, see [request]); never both; routes must not start with a slash.
+    assert(body != null || files != null || <HttpMethodEnum>[HttpMethodEnum.get, HttpMethodEnum.delete, HttpMethodEnum.head, HttpMethodEnum.patch].contains(method)),
+    assert(body == null || files == null),
     assert(!route.startsWith("/"));
 
   /// Decodes the response body as UTF-8 JSON.
@@ -120,7 +136,20 @@ final class Http {
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
 
-  Request _buildRequest() {
+  /// Builds a new request for every attempt: a request (and a multipart file
+  /// part) can be sent only once, and the 401 retry needs the fresh token.
+  BaseRequest _buildRequest() {
+    final List<HttpFile>? files = this.files;
+    if (files != null) {
+      return MultipartRequest(method.key, uri)
+        ..headers.addAll(_headers)
+        ..fields.addAll(fields)
+        ..files.addAll(files.map((HttpFile file) => MultipartFile.fromBytes(
+          file.field,
+          file.bytes,
+          filename: file.filename,
+        )));
+    }
     final Request request = Request(method.key, uri)..headers.addAll(_headers);
     if (body != null) {
       request.body = jsonEncode(body!.toJson());
@@ -128,36 +157,14 @@ final class Http {
     return request;
   }
 
-  /// Executes the request and returns the raw [Response].
-  /// Logs errors when LOGGER_ERROR is enabled and verbose success when
-  /// LOGGER_VERBOSE is enabled.
-  Future<Response> call() async {
-    final Response response;
-
-    try {
-      response = await Response.fromStream(await _client.send(_buildRequest()));
-    } catch (error) {
-      if (Env.flag("LOGGER_ERROR")) {
-        Logger().e("Fail to call $method $uri");
-      }
-      rethrow;
-    }
-
-    if (response.statusCode < 400 && Env.flag("LOGGER_VERBOSE")) {
-      Logger().t("Success to call $method $uri");
-    }
-
-    return response;
-  }
-
-  /// Opens a streaming request and returns the [StreamedResponse].
-  /// Used by [Http.listen] for server-sent events or chunked responses.
+  /// Sends one attempt of the request and returns the [StreamedResponse]
+  /// (body not read yet). Logs transport failures when LOGGER_ERROR is enabled.
   Future<StreamedResponse> stream() async {
     try {
       return await _client.send(_buildRequest());
     } catch (error) {
       if (Env.flag("LOGGER_ERROR")) {
-        Logger().e("Fail to open stream $method $uri");
+        Logger().e("Fail to call $method $uri");
       }
       rethrow;
     }
@@ -186,15 +193,24 @@ final class Http {
     };
   }
 
-  /// Sends [http], retries once after a token refresh on 401, and throws
-  /// [ApiException] for any HTTP 400+ response.
-  static Future<Response> _send(Http http, {bool isRetry = false}) async {
-    final Response response = await http.call();
+  /// The single send path of every factory method: opens [http] and returns
+  /// the response (body not read yet) once it is known to be successful.
+  ///
+  /// On 401 it refreshes the token once and retries with a freshly built
+  /// request; a 401 after that refresh calls the onUnauthorized callback.
+  /// Any HTTP 400+ response throws [ApiException] (see [_errorDetail]).
+  static Future<StreamedResponse> _open(Http http, {bool isRetry = false}) async {
+    final StreamedResponse streamed = await http.stream();
+    if (streamed.statusCode < 400) {
+      return streamed;
+    }
+    // Read the error body: frees the connection and carries the detail.
+    final Response response = await Response.fromStream(streamed);
 
     if (response.statusCode == 401 && !isRetry && _tokenRefreshCallback != null) {
       final String? freshToken = await _tokenRefreshCallback!();
       if (freshToken != null) {
-        return _send(http, isRetry: true);
+        return _open(http, isRetry: true);
       }
     }
     // 401 after a successful refresh — the session is irrecoverably expired.
@@ -202,23 +218,35 @@ final class Http {
       _onUnauthorizedCallback?.call();
     }
 
-    if (response.statusCode >= 400) {
-      String detail = statusCodeToString(response.statusCode);
-      try {
-        final Map<String, dynamic> error = http.parse(response) as Map<String, dynamic>;
-        detail = error["detail"] as String? ?? error["title"] as String? ?? error["error"] as String? ?? detail;
-      } catch (_) {
-        // Empty or non-JSON error body — keep the HTTP status text.
-      }
-      if (Env.flag("LOGGER_ERROR")) {
-        Logger().e("${http.method} ${http.uri} → ${response.statusCode}: $detail");
-      }
-      throw ApiException(
-        status: response.statusCode,
-        detail: detail,
-      );
+    final String detail = _errorDetail(http, response);
+    if (Env.flag("LOGGER_ERROR")) {
+      Logger().e("${http.method} ${http.uri} → ${response.statusCode}: $detail");
     }
+    throw ApiException(
+      status: response.statusCode,
+      detail: detail,
+    );
+  }
 
+  /// Error message of an HTTP 400+ [response]: the body's `detail`, `title`
+  /// or `error` field, else the HTTP status text.
+  static String _errorDetail(Http http, Response response) {
+    final String fallback = statusCodeToString(response.statusCode);
+    try {
+      final Map<String, dynamic> error = http.parse(response) as Map<String, dynamic>;
+      return error["detail"] as String? ?? error["title"] as String? ?? error["error"] as String? ?? fallback;
+    } catch (_) {
+      // Empty or non-JSON error body — keep the HTTP status text.
+      return fallback;
+    }
+  }
+
+  /// Sends [http] through [_open] and reads the whole successful response.
+  static Future<Response> _send(Http http) async {
+    final Response response = await Response.fromStream(await _open(http));
+    if (Env.flag("LOGGER_VERBOSE")) {
+      Logger().t("Success to call ${http.method} ${http.uri}");
+    }
     return response;
   }
 
@@ -312,17 +340,20 @@ final class Http {
     });
   }
 
-  /// HEAD or DELETE request that returns no body.
+  /// HEAD, DELETE or PATCH request sent without a body; the response body
+  /// (if any, e.g. none on 204) is ignored.
   ///
-  /// Use for side-effect-only operations (e.g. deleting an entry).
-  /// [method] must be head or delete — enforced by assertion.
+  /// Use for side-effect-only operations (e.g. deleting an entry, or a state
+  /// transition such as `PATCH items/1/archive` → 204). A PATCH that carries
+  /// data goes through [input] instead: this method never sends a body.
+  /// [method] must be head, delete or patch — enforced by assertion.
   /// Throws [ApiException] for HTTP 400+ responses like every other method.
   static Future<void> request({
     required HttpMethodEnum method,
     required HttpApiEnum api,
     required String route,
   }) {
-    assert(<HttpMethodEnum>[HttpMethodEnum.head, HttpMethodEnum.delete].contains(method));
+    assert(<HttpMethodEnum>[HttpMethodEnum.head, HttpMethodEnum.delete, HttpMethodEnum.patch].contains(method));
 
     final Http http = Http._internal(
       method: method,
@@ -337,8 +368,10 @@ final class Http {
   ///
   /// [transformer] converts raw bytes to [T] (e.g. an SSE decoder). The
   /// returned future completes when the stream closes or throws on the first
-  /// error (cancelOnError is always true). Throws [ApiException] when the
-  /// server answers with HTTP 400+ before streaming.
+  /// error (cancelOnError is always true). Same auth and error contract as
+  /// every other method: one token refresh + re-open on 401, [ApiException]
+  /// (detail from the body) when the server answers with HTTP 400+ before
+  /// streaming — [listener] is not called then.
   static Future<void> listen<T>({
     required HttpMethodEnum method,
     required HttpApiEnum api,
@@ -359,19 +392,53 @@ final class Http {
     );
 
     return _run(http, (Http http) async {
-      final StreamedResponse response = await http.stream();
-      if (response.statusCode >= 400) {
-        await response.stream.drain<void>();
-        throw ApiException(
-          status: response.statusCode,
-          detail: statusCodeToString(response.statusCode),
-        );
-      }
-
+      final StreamedResponse response = await _open(http);
       await response.stream.transform(transformer).forEach(listener);
       if (Env.flag("LOGGER_VERBOSE")) {
         Logger().t("Success to listen stream $method ${http.uri}");
       }
     });
+  }
+
+  /// POST multipart/form-data: [files] as file parts, [fields] as text fields.
+  /// Returns the JSON response as [HttpOutput], like [input].
+  ///
+  /// Same auth and error contract as every other method (Bearer header, one
+  /// token refresh + retry on 401 that re-sends fresh copies of the parts,
+  /// [ApiException] for HTTP 400+).
+  static Future<HttpOutput> multipart({
+    required HttpApiEnum api,
+    required String route,
+    required List<HttpFile> files,
+    Map<String, String> fields = const <String, String>{},
+  }) {
+    final Http http = Http._internal(
+      method: HttpMethodEnum.post,
+      api: api,
+      route: route,
+      files: files,
+      fields: fields,
+    );
+
+    return _run(http, (Http http) async {
+      return HttpOutput.fromJson(http.parse(await _send(http)) as Map<String, dynamic>);
+    });
+  }
+
+  /// GET the raw response body. Use for binary downloads (file exports,
+  /// images). Same auth and error contract as every other method.
+  static Future<Uint8List> rawBytes({
+    required HttpApiEnum api,
+    required String route,
+    ApiFilterBuilder? queryBuilder,
+  }) {
+    final Http http = Http._internal(
+      method: HttpMethodEnum.get,
+      api: api,
+      route: route,
+      queryBuilder: queryBuilder,
+    );
+
+    return _run(http, (Http http) async => (await _send(http)).bodyBytes);
   }
 }

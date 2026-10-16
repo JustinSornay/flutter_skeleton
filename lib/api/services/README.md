@@ -5,8 +5,15 @@ go through `Http` — never through the `http` package directly.
 
 Rules:
 
-- Use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request` or
-  `Http.listen`. Routes have no leading `/`.
+- Use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request` (HEAD /
+  DELETE / body-less PATCH), `Http.listen`, `Http.multipart` (uploads,
+  `HttpFile` parts) or `Http.rawBytes` (binary downloads). Routes have no
+  leading `/`.
+- Streaming endpoints: `Http.listen<Map<String, dynamic>>` with
+  `const SseTransformer()` or `const NdjsonTransformer()`
+  (`api/http/transformers/`); map each object to a DTO in the `listener` via
+  `HttpOutput.fromJson(json)`. The future throws `ApiException` (HTTP 400+)
+  or `FormatException` (malformed JSON, invalid UTF-8).
 - Wrap every body in `try { … } catch (e) { Logger().e("Service.method: $e"); rethrow; }`.
   Every catch block is an observability checkpoint — a bare rethrow is incomplete.
   `future.withErrorLog("Service.method")` (`utils/extensions/future_extensions.dart`)

@@ -217,8 +217,8 @@ void main() {
       expect(find.text("report.csv"), findsOneWidget);
       expect(find.text("notes.txt"), findsOneWidget);
       // Without EasyLocalization in the tree, .tr() returns the raw key.
-      expect(find.text("custom.file_upload_panel.size_kb"), findsOneWidget);
-      expect(find.text("custom.file_upload_panel.size_bytes"), findsOneWidget);
+      expect(find.text("common.byte_units.kb"), findsOneWidget);
+      expect(find.text("common.byte_units.b"), findsOneWidget);
       expect(find.text(_clear), findsOneWidget);
     });
 
@@ -229,7 +229,7 @@ void main() {
       await _tapPick(tester);
 
       expect(
-        find.bySemanticsLabel("report.csv, custom.file_upload_panel.size_kb"),
+        find.bySemanticsLabel("report.csv, common.byte_units.kb"),
         findsOneWidget,
       );
       semantics.dispose();
@@ -558,7 +558,7 @@ void main() {
     });
 
     // The test font draws every glyph one em wide, so the raw size key alone
-    // needs about 350 dp: 480 dp is the narrowest surface that fits it.
+    // needs about 220 dp: at 480 dp the name gets the rest and must ellipsize.
     testWidgets("ellipsizes a long file name without overflow", (WidgetTester tester) async {
       await _pumpPanel(
         tester,
@@ -580,7 +580,7 @@ void main() {
       await _tapPick(tester);
 
       expect(tester.takeException(), isNull);
-      expect(find.text("custom.file_upload_panel.size_mb"), findsOneWidget);
+      expect(find.text("common.byte_units.mb"), findsOneWidget);
       final Text name = tester.widget<Text>(
         find.text("a-very-long-file-name-that-does-not-fit-on-one-line-at-all.csv"),
       );

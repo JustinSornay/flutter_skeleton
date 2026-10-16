@@ -12,7 +12,13 @@
     "close": "Close",
     "loading": "Loading",
     "retry": "Retry",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "byte_units": {
+      "b": "{value} B",
+      "kb": "{value} KB",
+      "mb": "{value} MB",
+      "gb": "{value} GB"
+    }
   },
   "error": {
     "load_failed": "Unable to load data.",
@@ -183,10 +189,7 @@
       "uploading": "Uploading…",
       "success": "Files uploaded successfully.",
       "failed": "Upload failed.",
-      "read_error": "Unable to read the selected files. Please try again.",
-      "size_bytes": "{value} B",
-      "size_kb": "{value} KB",
-      "size_mb": "{value} MB"
+      "read_error": "Unable to read the selected files. Please try again."
     },
     "filterable_data_table": {
       "all": "All",

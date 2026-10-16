@@ -2,8 +2,8 @@
 //
 // Unit tests for PolygonWizardRules (lib/widgets/custom/PolygonWizardSheet/
 // controllers/wizard_rules.dart): valid step mixes, the first step shown,
-// step completeness, the submitted name, the centroid and the crossing-edge
-// check.
+// step completeness, the submitted name and the centroid. The crossing-edge
+// check is tested in test/unit/utils/polygon_shape_test.dart.
 
 import "package:flutter_skeleton/widgets/custom/PolygonWizardSheet/index.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -31,7 +31,6 @@ void main() {
   _isCompleteTests();
   _resolveNameTests();
   _centroidTests();
-  _crossingTests();
 }
 
 void _stepsProblemTests() {
@@ -213,69 +212,6 @@ void _centroidTests() {
       expect(
         PolygonWizardRules.centroid(const <LatLng>[], const LatLng(9, 9)),
         const LatLng(9, 9),
-      );
-    });
-  });
-}
-
-void _crossingTests() {
-  group("hasCrossingEdges", () {
-    test("simple shapes do not cross", () {
-      expect(PolygonWizardRules.hasCrossingEdges(const <LatLng>[]), isFalse);
-      expect(
-        PolygonWizardRules.hasCrossingEdges(const <LatLng>[
-          LatLng(0, 0),
-          LatLng(0, 1),
-          LatLng(1, 0),
-        ]),
-        isFalse,
-      );
-      expect(
-        PolygonWizardRules.hasCrossingEdges(const <LatLng>[
-          LatLng(0, 0),
-          LatLng(0, 2),
-          LatLng(2, 2),
-          LatLng(1, 1),
-          LatLng(2, 0),
-        ]),
-        isFalse,
-      );
-    });
-
-    test("a bow-tie crosses", () {
-      expect(
-        PolygonWizardRules.hasCrossingEdges(const <LatLng>[
-          LatLng(0, 0),
-          LatLng(1, 1),
-          LatLng(0, 1),
-          LatLng(1, 0),
-        ]),
-        isTrue,
-      );
-    });
-
-    test("a crossing on the closing edge counts", () {
-      expect(
-        PolygonWizardRules.hasCrossingEdges(const <LatLng>[
-          LatLng(0, 0),
-          LatLng(0, 2),
-          LatLng(2, 2),
-          // The closing edge back to (0, 0) cuts the edge (0, 2)–(2, 2).
-          LatLng(1, 3),
-        ]),
-        isTrue,
-      );
-    });
-
-    test("a vertex on a non-adjacent edge touches", () {
-      expect(
-        PolygonWizardRules.hasCrossingEdges(const <LatLng>[
-          LatLng(0, 0),
-          LatLng(0, 2),
-          LatLng(2, 2),
-          LatLng(0, 1),
-        ]),
-        isTrue,
       );
     });
   });

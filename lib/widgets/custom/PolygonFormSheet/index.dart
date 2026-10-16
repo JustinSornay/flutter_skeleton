@@ -2,16 +2,15 @@
 //
 // PolygonFormSheet — one-page sheet content that creates a named polygon on a
 // map, optionally tied to one item picked first in a host-built picker.
-// Composes MapPolygonEditor (drawing) and EditableValueRow (picked item).
-// Declares the PolygonFormSelection / PolygonFormResult value classes. State
-// lives in view_model.dart, the tree in view.dart, the crossing-edge check in
-// controllers/ and the private pieces in widgets/.
-
-import "dart:math" as math;
+// Composes MapPolygonEditor (drawing) and EditableValueRow (picked item);
+// the crossing-edge check comes from utils/geo/polygon_shape.dart. Declares
+// the PolygonFormSelection / PolygonFormResult value classes. State lives in
+// view_model.dart, the tree in view.dart and the private pieces in widgets/.
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
+import "package:flutter_skeleton/utils/geo/polygon_shape.dart";
 import "package:flutter_skeleton/utils/load_state.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/EditableValueRow/index.dart";
@@ -20,7 +19,6 @@ import "package:flutter_skeleton/widgets/custom/MapPolygonEditor/index.dart";
 import "package:latlong2/latlong.dart";
 import "package:logger/logger.dart";
 
-part "controllers/polygon_shape.dart";
 part "view_model.dart";
 part "view.dart";
 part "widgets/draw_section.dart";

@@ -4,7 +4,7 @@
 // controller; tracks the picked item and the submit lifecycle as
 // LoadState values: selection (Idle = picker, Loading, Loaded, LoadError =
 // picker with an error) and submission (Idle, Loading, Loaded = locked after
-// success, LoadError = inline error). Re-runs PolygonFormShape on every
+// success, LoadError = inline error). Re-runs hasCrossingEdges on every
 // vertex change and remembers whether the form was shown, so it stays
 // mounted behind the picker.
 
@@ -74,7 +74,7 @@ final class _PolygonFormSheetState extends State<PolygonFormSheet>
   void _onPolygonChanged() {
     if (!mounted) return;
     setState(() {
-      edgesCross = PolygonFormShape.hasCrossingEdges(polygon.points);
+      edgesCross = hasCrossingEdges(polygon.points);
     });
   }
 

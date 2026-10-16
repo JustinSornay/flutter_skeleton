@@ -157,7 +157,7 @@ final class _PolygonWizardSheetState extends State<PolygonWizardSheet>
       return;
     }
     setState(() {
-      edgesCross = PolygonWizardRules.hasCrossingEdges(polygon.points);
+      edgesCross = hasCrossingEdges(polygon.points);
       if (polygon.isEmpty) importedId = null;
     });
   }

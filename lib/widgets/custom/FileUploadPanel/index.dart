@@ -4,18 +4,18 @@
 // sizes, clear the selection and upload it through a host callback, with an
 // inline progress / success / failure status. The host injects the file
 // picker and the upload transport. State lives in view_model.dart, the tree
-// in view.dart, the private pieces in widgets/ and the size formatting in
-// controllers/. Value class: SelectedFile.
+// in view.dart and the private pieces in widgets/; sizes are formatted by
+// ByteSize (utils/formatters/byte_size.dart). Value class: SelectedFile.
 
 import "dart:typed_data";
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/theme/status_tones.dart";
+import "package:flutter_skeleton/utils/formatters/byte_size.dart";
 import "package:flutter_skeleton/utils/load_state.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 
-part "controllers/file_upload_size.dart";
 part "view_model.dart";
 part "view.dart";
 part "widgets/file_list.dart";
@@ -28,7 +28,7 @@ final class SelectedFile {
   /// File name shown in the list (and handed back to the upload callback).
   final String name;
 
-  /// Size in bytes, shown next to the name (B / KB / MB).
+  /// Size in bytes, shown next to the name (B / KB / MB / GB, see [ByteSize]).
   final int size;
 
   /// File content, or null when the platform could not read it. Such files

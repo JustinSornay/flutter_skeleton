@@ -58,8 +58,8 @@ final class _FileRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final FileUploadSize size = FileUploadSize.of(file.size, locale: locale);
-    final String sizeText = size.key.tr(namedArgs: <String, String>{"value": size.value});
+    final ByteSize size = ByteSize.of(file.size, locale: locale);
+    final String sizeText = size.key.tr(namedArgs: size.namedArgs);
     return Semantics(
       container: true,
       label: "${file.name}, $sizeText",

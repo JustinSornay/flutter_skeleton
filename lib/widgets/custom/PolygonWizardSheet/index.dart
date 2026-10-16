@@ -6,7 +6,8 @@
 // Back / Next / Submit bar. Composes MapPolygonEditor (drawing), PillBadge
 // (vertex counter) and EditableValueRow (picked item), and shares
 // PolygonFormSelection / PolygonFormResult with PolygonFormSheet (exported
-// here). Declares the step and suggestion value classes. State lives in
+// here); the crossing-edge check comes from utils/geo/polygon_shape.dart.
+// Declares the step and suggestion value classes. State lives in
 // view_model.dart, the tree in view.dart, the pure rules in controllers/ and
 // one part per step kind in widgets/.
 
@@ -17,6 +18,7 @@ import "package:easy_localization/easy_localization.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
+import "package:flutter_skeleton/utils/geo/polygon_shape.dart";
 import "package:flutter_skeleton/utils/load_state.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/custom/EditableValueRow/index.dart";

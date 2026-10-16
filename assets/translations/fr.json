@@ -12,7 +12,13 @@
     "close": "Fermer",
     "loading": "Chargement",
     "retry": "Réessayer",
-    "cancel": "Annuler"
+    "cancel": "Annuler",
+    "byte_units": {
+      "b": "{value} o",
+      "kb": "{value} Ko",
+      "mb": "{value} Mo",
+      "gb": "{value} Go"
+    }
   },
   "error": {
     "load_failed": "Impossible de charger les données.",
@@ -183,10 +189,7 @@
       "uploading": "Import en cours…",
       "success": "Fichiers importés avec succès.",
       "failed": "L'import a échoué.",
-      "read_error": "Impossible de lire les fichiers sélectionnés. Réessayez.",
-      "size_bytes": "{value} o",
-      "size_kb": "{value} Ko",
-      "size_mb": "{value} Mo"
+      "read_error": "Impossible de lire les fichiers sélectionnés. Réessayez."
     },
     "filterable_data_table": {
       "all": "Tous",

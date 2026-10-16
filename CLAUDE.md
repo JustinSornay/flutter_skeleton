@@ -121,7 +121,7 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 api/
   controllers/  # User-facing flows around service calls (toasts, redirection, confirmation) (+ _base/confirmAction)
   dtos/         # Data Transfer Objects (input/ and output/ sub-folders per entity)
-  http/         # Http utility class, HttpOutput, ApiException, enums
+  http/         # Http utility class, HttpOutput, HttpFile, ApiException, enums, transformers/ (SSE, NDJSON)
   services/     # One service class per entity (+ _base/apiFilterBuilder)
 data/           # Static in-memory data (nav entries, locale config)
 providers/      # ChangeNotifier providers (+ _base helpers)
@@ -130,7 +130,7 @@ routing/
   router/       # GoRouter config
   templates/    # Page layout templates (FullPageTemplate, SplittedPageTemplate, FollowUpPageTemplate)
 theme/          # AppTheme (light / dark from one seed colour), StatusTones
-utils/          # Env, LoadState, ActionState, requireAuth, Coords, geo, parsers, extensions, builders, logger filters (see its README)
+utils/          # Env, LoadState, ActionState, requireAuth, Coords, geo (area, shape, GeoJSON, compass), parsers, formatters, extensions, builders, logger filters (see its README)
 widgets/
   constants.dart  # spacing grid, content width, motion, resolveMotion()
   core/
@@ -234,11 +234,12 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - Parse via `output.cast<T>("key")`, `output.output("key")`, `output.outputList("key")` — never read `output.json` directly for typed fields. `cast` is strict: missing key or wrong type throws.
 - Inputs extend `AbstractInput` and implement `Map<String, dynamic> toJson()`, omitting unset optional fields
 - Specs that provide `fromJson(Map<String, dynamic>)` patterns must be converted to `fromOutput(HttpOutput)`
+- GeoJSON polygons go through `utils/geo/geojson.dart` (`polygonToGeoJson` in inputs' `toJson()`, `geoJsonOuterRings` in outputs) — never hand-roll the `[lon, lat]` flip or the ring closing
 
 **Services**
 - One class per entity (`TodoService`, …); generate them with the service generator
 - All methods are `static Future<T>`
-- Always use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request`, or `Http.listen`
+- Always use `Http.output`, `Http.listOutput`, `Http.input`, `Http.request`, `Http.listen`, `Http.multipart` or `Http.rawBytes`
 - Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` (or the equivalent `.withErrorLog("ServiceName.methodName")` from `utils/extensions/future_extensions.dart`) — every service catch block is an observability checkpoint; a bare rethrow is incomplete
 - Pass an `ApiFilterBuilder` as `queryBuilder` for filtered/paginated list calls
 
@@ -252,10 +253,12 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - `Http.output` — GET → single `HttpOutput` (unwraps a `data` object envelope)
 - `Http.listOutput` — GET → `List<HttpOutput>` (accepts a bare array or a `data` envelope)
 - `Http.input` — POST/PUT/PATCH → `HttpOutput`
-- `Http.request` — HEAD/DELETE → void
-- `Http.listen` — streaming via `StreamTransformer`
+- `Http.request` — HEAD / DELETE / body-less PATCH (a state transition answering 204) → void; never sends a body
+- `Http.listen` — streaming via `StreamTransformer<List<int>, T>`; `api/http/transformers/` ships `SseTransformer` (text/event-stream) and `NdjsonTransformer` (one JSON object per line), both emitting `Map<String, dynamic>` with UTF-8 decoded across chunks — map them to DTOs in the listener with `HttpOutput.fromJson(json)`. Malformed JSON or invalid UTF-8 surfaces as a `FormatException`
+- `Http.multipart` — POST multipart/form-data: `files: List<HttpFile>` (`api/http/http_file.dart`: field, bytes, filename; parts sent as `application/octet-stream`) + `fields: Map<String, String>` → `HttpOutput`; fresh parts are built for the 401 retry
+- `Http.rawBytes` — GET → `Uint8List` (binary downloads)
 
-Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). Routes must have no leading `/`.
+Every method throws `ApiException(status, detail)` for HTTP 400+ (`detail` comes from the body's `detail` / `title` / `error`, else the status text). All of them share one send path: Bearer header, one token refresh + retry on a 401, `onUnauthorized` when the retry with the refreshed token gets a 401 again; `Http.listen` included, before streaming (the listener is not called). Routes must have no leading `/`.
 
 Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (Bearer token), `Http.setTokenRefreshCallback` (one retry after a 401), `Http.setOnUnauthorizedCallback` (401 again after refresh → force sign-out). `Http.hasToken` guards auth-gated calls. For an action that needs a signed-in user, call `requireAuth(context)` (`utils/auth_gate.dart`): it returns true when a token exists, otherwise runs the sign-in flow the app registers with `AuthGate.setSignInHandler` (e.g. open a sign-in modal through `ModalProvider` and complete when it closes), then returns `Http.hasToken`. Concurrent calls share one flow.
 
@@ -296,6 +299,7 @@ Handled by `EasyLocalization`. Supported locales and asset path live in `data/lo
 
 - **Canonical reference:** `fr.json` — every other locale must match its key set exactly (enforced by `test/unit/translations_test.dart`).
 - **Import rule:** `easy_localization` must be imported in the parent `index.dart`, not in `view.dart` (part files have no imports).
+- Shared unit labels live under `common.*` (e.g. `common.byte_units.*` for `ByteSize`).
 - **Parametric keys** use `namedArgs`: `"todo.user".tr(namedArgs: <String, String>{"id": "$id"})` → `"Utilisateur n°{id}"`.
 - Never hardcode user-visible strings in widgets.
 
