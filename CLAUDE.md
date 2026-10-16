@@ -68,7 +68,7 @@ Shared helpers in `test/helpers/widget_test_helpers.dart`:
 | `pumpLocalizedRouter(tester, initialLocation:)` | The real shell (router + Layout + EasyLocalization with real translations); required when a widget reads `context.locale` |
 | `defaultTestProviders(offline:)` | Global providers without platform channels |
 
-**Injectable seam pattern:** static service methods aren't mockable. Render widgets and providers expose optional named function params (`getList`, `getTodo`, `patchTodo`, …) whose production default is the service method. Tests pass plain fake closures at construction time. See `TodoList` / `TodoDetail` and their tests.
+**Injectable seam pattern:** static service methods aren't mockable. Render widgets and providers expose optional named function params (`getList`, …) whose production default is the service method; widgets that go through a controller take the controller instead (`TodoDetail(controller: TodoController(getTodo: fake))`). Tests pass plain fake closures at construction time. See `TodoList` / `TodoDetail` / `TodoController` and their tests.
 
 ## Environment
 
@@ -111,7 +111,7 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 
 - **Look before you create**: search `utils/`, `widgets/custom/`, `api/http/` before writing anything new. Use the existing `Listing` widget for paginated lazy-loaded lists.
 - **No project-specific names**: keep nomenclature generic (`api`, `dto`, `model`) — never use the app name in folder/variable names.
-- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`).
+- **Read READMEs**: check README.md files in target directories before modifying them (`lib/widgets/`, `lib/widgets/core/render/`, `lib/widgets/core/decorators/`, `lib/widgets/custom/`, `lib/widgets/layout/`, `lib/api/dtos/`, `lib/api/services/`, `lib/api/controllers/`).
 - **Mirror existing patterns**: inspect similar files before writing new ones.
 - **Never wrap `Listing` in a scroll view**: `Listing` manages its own `ScrollController`. Wrapping it in `SingleChildScrollView` or `ListView` breaks lazy loading. Use `Column` + `Expanded` around it (or `FullPageTemplate`, which already does). Give it a `ValueKey` containing every param that should trigger a refresh (query, filters, locale).
 
@@ -119,6 +119,7 @@ The `HttpApiEnum` key (e.g. `api` → `API`) is the prefix for the URL / scheme 
 
 ```
 api/
+  controllers/  # User-facing flows around service calls (toasts, redirection, confirmation) (+ _base/confirmAction)
   dtos/         # Data Transfer Objects (input/ and output/ sub-folders per entity)
   http/         # Http utility class, HttpOutput, ApiException, enums
   services/     # One service class per entity (+ _base/apiFilterBuilder)
@@ -143,7 +144,7 @@ main.dart       # Bootstrap, providers, MaterialApp.router
 
 Create `models/` (plain Dart models, sealed unions) and `services/` (local, non-API services: cache, export…) when the first one is needed.
 
-The **demo feature** (todos from JSONPlaceholder) spans `api/dtos/todo/`, `api/services/todo_service.dart`, `widgets/core/render/Todo*/`, `routing/pages/{home,todo}_page.dart` and their tests. It exists to show every layer working together; delete it when starting a real project.
+The **demo feature** (todos from JSONPlaceholder) spans `api/dtos/todo/`, `api/services/todo_service.dart`, `api/controllers/todo_controller.dart`, `widgets/core/render/Todo*/`, `routing/pages/{home,todo}_page.dart` and their tests. It exists to show every layer working together; delete it when starting a real project.
 
 ### Coding conventions
 
@@ -241,6 +242,12 @@ Async screen state uses `LoadState<T>` (`utils/load_state.dart`: `Idle`, `Loadin
 - Always wrap in `try { ... } catch (e) { Logger().e("ServiceName.methodName: $e"); rethrow; }` — every service catch block is an observability checkpoint; a bare rethrow is incomplete
 - Pass an `ApiFilterBuilder` as `queryBuilder` for filtered/paginated list calls
 
+**Controllers** (`api/controllers/`, see its README)
+- Sit between view models and services, like API controllers: they call services and own what the user experiences around the call — error toasts, redirection, the meaning of a status code for the flow (404 = gone, 409 = exists), auth and multi-step flows, confirmation modal (`confirmAction`), feedback overlay, success toast (`AppErrorLevel.success`)
+- One `final class <Entity>Controller` per entity or flow, `const` constructor whose params are the service calls defaulting to the static service methods (test seam)
+- Methods are `Future<T>` taking `BuildContext` first and never throw: the return value (`LoadState<T>`, `T?`, `bool`) tells the view model what happened; local UI state stays in the view model
+- Read providers before the first `await`; after it, use the context only behind `context.mounted`
+
 **Http utility** (`api/http/http.dart`)
 - `Http.output` — GET → single `HttpOutput` (unwraps a `data` object envelope)
 - `Http.listOutput` — GET → `List<HttpOutput>` (accepts a bare array or a `data` envelope)
@@ -255,7 +262,7 @@ Auth hooks (no auth provider ships with the skeleton): `Http.setTokenProvider` (
 ### Providers
 
 Global providers registered in `main.dart` via `MultiProvider`:
-- `ErrorProvider` — global toast (`show(message, level:)`, auto-dismiss 3 s info / 5 s otherwise), rendered by `ErrorToastCard`
+- `ErrorProvider` — global toast (`show(message, level:)` with `info` / `success` / `warning` / `error`, auto-dismiss 3 s info and success / 5 s otherwise), rendered by `ErrorToastCard`
 - `ConnectivityProvider` — `isOffline`, rendered by `OfflineBanner`; `ConnectivityProvider.withState(offline:)` in tests
 - `ModalProvider` — `show(widget)` / `dismiss()`, rendered by `ModalConsumer` in the ShellRoute; pair it with `AppModal`
 

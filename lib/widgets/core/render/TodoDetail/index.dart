@@ -1,23 +1,20 @@
 // index.dart
 //
 // TodoDetail — demo render widget: loads one todo, lets the user toggle its
-// completion through a PATCH, and reports save failures via ErrorProvider.
+// completion or delete it.
 //
-// Shows the full MVVM triad with LoadState<T> and two injectable seams
-// ([getTodo], [patchTodo]) defaulting to TodoService.
+// Shows the full MVVM triad with LoadState<T>. The calls and their feedback
+// (toasts, confirmation modal, redirection) go through TodoController; the
+// view model only keeps local UI state. Tests inject a [controller] built
+// with fake service calls.
 
 import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
-import "package:flutter_skeleton/api/dtos/todo/input/patch_input.dart";
+import "package:flutter_skeleton/api/controllers/todo_controller.dart";
 import "package:flutter_skeleton/api/dtos/todo/output/detail_output.dart";
-import "package:flutter_skeleton/api/http/api_exception.dart";
-import "package:flutter_skeleton/api/services/todo_service.dart";
-import "package:flutter_skeleton/providers/error_provider.dart";
 import "package:flutter_skeleton/utils/load_state.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:flutter_skeleton/widgets/core/decorators/SkeletonPulse/index.dart";
-import "package:logger/logger.dart";
-import "package:provider/provider.dart";
 
 part "view_model.dart";
 part "view.dart";
@@ -26,17 +23,13 @@ part "view.dart";
 final class TodoDetail extends StatefulWidget {
   final int todoId;
 
-  /// Test seam — defaults to [TodoService.get].
-  final Future<TodoDetailOutput> Function(int id)? getTodo;
-
-  /// Test seam — defaults to [TodoService.patch].
-  final Future<TodoDetailOutput> Function(int id, TodoPatchInput input)? patchTodo;
+  /// Test seam — defaults to a [TodoController] backed by TodoService.
+  final TodoController? controller;
 
   const TodoDetail({
     super.key,
     required this.todoId,
-    this.getTodo,
-    this.patchTodo,
+    this.controller,
   });
 
   @override

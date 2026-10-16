@@ -93,6 +93,7 @@ widget can host them.
 
 | Widget | Purpose |
 |---|---|
+| `ConfirmCard` | Content of a confirmation modal: a title, an optional message, and cancel / confirm buttons (error colours when destructive). Mounted by `confirmAction()` in `api/controllers/_base`. |
 | `AsyncPickerSheet` | Sheet content for picking one value of type `T` from a body that the caller builds, then committing it with an async `onSubmit`. |
 | `MultiSelectSheet` | A content-only panel for a bottom sheet or `AppModal` where the user picks several values from a checkbox list and confirms. |
 | `SingleSelectSheet` | Content for a bottom sheet or modal. The user picks exactly one value from radio rows, and the choice stays pending until they press confirm or cancel. |

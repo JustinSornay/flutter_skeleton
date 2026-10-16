@@ -11,7 +11,8 @@
     "back": "Retour",
     "close": "Fermer",
     "loading": "Chargement",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "cancel": "Annuler"
   },
   "error": {
     "load_failed": "Impossible de charger les données.",
@@ -33,7 +34,14 @@
   "todo": {
     "title": "Détail de la tâche",
     "user": "Utilisateur n°{id}",
-    "completed": "Terminée"
+    "completed": "Terminée",
+    "saved": "Tâche enregistrée.",
+    "not_found": "Cette tâche n'existe plus.",
+    "delete": "Supprimer",
+    "delete_title": "Supprimer cette tâche ?",
+    "delete_message": "Elle sera retirée de la liste. Cette action est définitive.",
+    "deleted": "Tâche supprimée.",
+    "delete_failed": "La tâche n'a pas pu être supprimée."
   },
   "settings": {
     "title": "Réglages",

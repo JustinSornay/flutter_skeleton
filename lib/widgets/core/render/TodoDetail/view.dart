@@ -73,6 +73,16 @@ mixin _ViewMixin {
             value: todo.completed,
             onChanged: state.isSaving ? null : state.setCompleted,
           ),
+          const SizedBox(height: kDefaultPadding * 2),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+            ),
+            onPressed: state.isSaving ? null : state.delete,
+            icon: const Icon(Icons.delete_outline_rounded),
+            label: Text("todo.delete".tr()),
+          ),
         ],
       ),
     );

@@ -8,6 +8,7 @@
 //
 // Severity levels map to theme colour tokens in ErrorToastCard:
 //   info    → ColorScheme.primaryContainer / onPrimaryContainer
+//   success → StatusTones success container / onContainer (confirmations)
 //   warning → ColorScheme.tertiaryContainer / onTertiaryContainer
 //   error   → ColorScheme.errorContainer / onErrorContainer
 
@@ -15,7 +16,7 @@ import "dart:async";
 import "package:flutter/foundation.dart";
 
 /// Severity level for an in-app error toast.
-enum AppErrorLevel { info, warning, error }
+enum AppErrorLevel { info, success, warning, error }
 
 /// Immutable data model for a single in-app error toast.
 final class AppError {
@@ -43,7 +44,7 @@ final class ErrorProvider extends ChangeNotifier {
     _current = AppError(message: message, level: level);
     notifyListeners();
 
-    final Duration duration = level == AppErrorLevel.info
+    final Duration duration = level == AppErrorLevel.info || level == AppErrorLevel.success
         ? const Duration(seconds: 3)
         : const Duration(seconds: 5);
 

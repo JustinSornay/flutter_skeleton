@@ -11,7 +11,8 @@
     "back": "Back",
     "close": "Close",
     "loading": "Loading",
-    "retry": "Retry"
+    "retry": "Retry",
+    "cancel": "Cancel"
   },
   "error": {
     "load_failed": "Unable to load data.",
@@ -33,7 +34,14 @@
   "todo": {
     "title": "Task details",
     "user": "User #{id}",
-    "completed": "Done"
+    "completed": "Done",
+    "saved": "Task saved.",
+    "not_found": "This task no longer exists.",
+    "delete": "Delete",
+    "delete_title": "Delete this task?",
+    "delete_message": "It will be removed from the list. This cannot be undone.",
+    "deleted": "Task deleted.",
+    "delete_failed": "The task could not be deleted."
   },
   "settings": {
     "title": "Settings",

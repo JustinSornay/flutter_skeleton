@@ -2,14 +2,15 @@
 //
 // ErrorToastCard — floating feedback banner that surfaces ErrorProvider state.
 //
-// Renders a coloured card below the header for info, warning, and error
-// messages. Auto-dismissed by ErrorProvider's internal timer.
+// Renders a coloured card below the header for info, success, warning and
+// error messages. Auto-dismissed by ErrorProvider's internal timer.
 // Manual dismissal via the close icon on the trailing edge.
 //
 // Single file by exception: trivial logic, no lifecycle.
 //
 // Colour mapping (theme tokens, not hardcoded):
 //   info    → primaryContainer / onPrimaryContainer / primary
+//   success → StatusTones success container / onContainer / foreground
 //   warning → tertiaryContainer / onTertiaryContainer / tertiary
 //   error   → errorContainer / onErrorContainer / error
 
@@ -17,6 +18,7 @@ import "package:easy_localization/easy_localization.dart";
 import "package:flutter/material.dart";
 import "package:flutter_skeleton/providers/_base/consumer.dart";
 import "package:flutter_skeleton/providers/error_provider.dart";
+import "package:flutter_skeleton/theme/status_tones.dart";
 import "package:flutter_skeleton/widgets/constants.dart";
 import "package:provider/provider.dart";
 
@@ -54,7 +56,7 @@ final class ErrorToastCard extends StatelessWidget {
   }
 
   Widget _card(BuildContext context, AppError error) {
-    final _ToastColors colors = _ToastColors.fromLevel(error.level, Theme.of(context).colorScheme);
+    final _ToastColors colors = _ToastColors.fromLevel(error.level, Theme.of(context).colorScheme, StatusTones.of(context));
 
     return Padding(
       key: ValueKey<AppError>(error),
@@ -109,6 +111,7 @@ final class ErrorToastCard extends StatelessWidget {
   IconData _iconForLevel(AppErrorLevel level) {
     return switch (level) {
       AppErrorLevel.info    => Icons.info_outline_rounded,
+      AppErrorLevel.success => Icons.check_circle_outline_rounded,
       AppErrorLevel.warning => Icons.warning_amber_rounded,
       AppErrorLevel.error   => Icons.error_outline_rounded,
     };
@@ -126,12 +129,18 @@ final class _ToastColors {
     required this.accent,
   });
 
-  factory _ToastColors.fromLevel(AppErrorLevel level, ColorScheme cs) {
+  factory _ToastColors.fromLevel(AppErrorLevel level, ColorScheme cs, StatusTones tones) {
+    final ToneColors success = tones.resolve(StatusTone.success, cs);
     return switch (level) {
       AppErrorLevel.info => _ToastColors(
           background: cs.primaryContainer,
           foreground: cs.onPrimaryContainer,
           accent: cs.primary,
+        ),
+      AppErrorLevel.success => _ToastColors(
+          background: success.container,
+          foreground: success.onContainer,
+          accent: success.foreground,
         ),
       AppErrorLevel.warning => _ToastColors(
           background: cs.tertiaryContainer,
